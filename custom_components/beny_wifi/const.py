@@ -334,9 +334,9 @@ class CLIENT_MESSAGE(Enum):
     }
 
     # DO NOT USE, UNCONFIRMED PARAMETERS
-    SET_VALUES = {
+    SET_MAX_CURRENT = {
         "description": "Send setting values to charger",
-        "hex": "55aa10000d000[pin]6d00[max_amps][checksum]",
+        "hex": "55aa10000d000[pin]6d00[max_current][checksum]",
         "structure": {
             "pin": slice(13,18)
         }

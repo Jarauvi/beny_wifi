@@ -30,11 +30,11 @@ set_timer:
     start_time:
       required: true
       selector: 
-        time:
+        time: {}
     end_time:
       required: false
       selector: 
-        time:
+        time: {}
 
 reset_timer:
   name: "Reset Timer"
@@ -47,8 +47,8 @@ reset_timer:
           integration: beny_wifi
 
 set_weekly_schedule:
-  name: "Set weekly schedule"
-  description: "Sets weekly schedule"
+  name: "Set Weekly Schedule"
+  description: "Sets weekly schedule."
   fields:
     device_id:
       required: true
@@ -58,42 +58,42 @@ set_weekly_schedule:
     sunday:
       required: true
       selector: 
-        boolean:
+        boolean: {}
     monday:
       required: true
       selector: 
-        boolean:
+        boolean: {}
     tuesday:
       required: true
       selector: 
-        boolean:
+        boolean: {}
     wednesday:
       required: true
       selector: 
-        boolean:
+        boolean: {}
     thursday:
       required: true
       selector: 
-        boolean:
+        boolean: {}
     friday:
       required: true
       selector: 
-        boolean:
+        boolean: {}
     saturday:
       required: true
       selector: 
-        boolean:
+        boolean: {}
     start_time:
       required: true
       selector: 
-        time:
+        time: {}
     end_time:
       required: true
       selector: 
-        time:
+        time: {}
 
 request_weekly_schedule:
-  name: "Request weekly schedule"
+  name: "Request Weekly Schedule"
   description: "Returns weekly schedule if set."
   fields:
     device_id:
@@ -103,8 +103,8 @@ request_weekly_schedule:
           integration: beny_wifi
 
 set_maximum_monthly_consumption:
-  name: "Set maximum monthly consumption"
-  description: "Limits maximum energy consumption on month basis."
+  name: "Set Maximum Monthly Consumption"
+  description: "Limits maximum energy consumption on a monthly basis."
   fields:
     device_id:
       required: true
@@ -119,11 +119,11 @@ set_maximum_monthly_consumption:
           max: 65535
           step: 1
           unit_of_measurement: "kWh"
-          mode: "box"
+          mode: box
 
 set_maximum_session_consumption:
-  name: "Set maximum sessopm consumption"
-  description: "Limits maximum energy consumption on session basis."
+  name: "Set Maximum Session Consumption"
+  description: "Limits maximum energy consumption on a session basis."
   fields:
     device_id:
       required: true
@@ -138,4 +138,24 @@ set_maximum_session_consumption:
           max: 256
           step: 1
           unit_of_measurement: "kWh"
-          mode: "box"
+          mode: box
+
+set_max_current:
+  name: "Set Max Current"
+  description: "Set the maximum charging current in amps."
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: beny_wifi
+    max_current:
+      name: "Max Current"
+      description: "Current limit between 6A and 32A."
+      required: true
+      example: 16
+      selector:
+        number:
+          min: 6
+          max: 32
+          mode: slider
