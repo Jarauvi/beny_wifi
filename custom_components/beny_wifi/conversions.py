@@ -150,6 +150,11 @@ def get_message_type(data: str) -> CLIENT_MESSAGE | SERVER_MESSAGE:
         return SERVER_MESSAGE.ACCESS_DENIED
     if msg_int == 30:
         return SERVER_MESSAGE.SEND_VALUES_1P
+    
+    # BCP-A2N-L v1.28 firmware changed msg_int to 31, adding support
+    if msg_int == 31:
+        return SERVER_MESSAGE.SEND_VALUES_1P
+        
     if msg_int == 35:
         return SERVER_MESSAGE.SEND_VALUES_3P
     if msg_int == 33:
@@ -216,3 +221,4 @@ def get_model(data: str) -> str:
 
     # Return ASCII string
     return bytes(model_bytes).decode('ascii')
+
