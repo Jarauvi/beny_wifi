@@ -17,6 +17,15 @@
 
 ⚠️*DISCLAIMER: I DO NOT TAKE ANY RESPONSIBILITY OF DAMAGED OR DESTROYED PROPERTY, INJURIES OR HUMAN CASUALTIES. USE AT YOUR OWN RISK*
 
+> [!IMPORTANT]
+>
+> `grid_import` and `grid_export` have been replaced by `grid_power`.
+> 
+> Any automations, scripts, or templates that referenced the old sensors must be updated to use `grid_power` instead.
+>
+> **Note:**  
+> Positive values represent **import**, and negative values represent **export**.
+
 <div align="left">
     <img alt="Sensors" height="256px" src="https://github.com/Jarauvi/beny-wifi/blob/main/images/sensors.png?raw=true">
 </div>
@@ -34,7 +43,7 @@ Integration should support 1-phase and 3-phase "smart" chargers with or without 
 | Model              | Firmware version |       Status      |
 | ------------------ | ---------------- | ----------------- |
 | BCP-AT1N-L         | 1.26             | ✅                |
-| BCP-A2-L           | 1.26             | WIP               |
+| BCP-A2-L           | 1.28             | ✅                |
 
 ### Installation
 
