@@ -69,15 +69,15 @@ def read_message(data, msg_type:str | None = None) -> dict:  # noqa: C901
         for param, pos in msg_type.value["structure"].items():
             value = int(data[pos], 16)
             try:
-                if param in ["grid_power", "ev_power", "house_power", "solar_power"]:
+                if param == "grid_power":
+                    # Grid power can be negative (exporting) - handle as signed 16-bit integer
+                    # Check if the high bit is set (value >= 0x8000 for 16-bit)
+                    if value >= 0x8000:
+                        # Convert from two's complement
+                        value = value - 0x10000
                     msg[param] = float(value) / 10
-                elif param == "grid_export":
-                    if int(value) > 0:
-                        msg[param] = True
-                    else:
-                        msg[param] = False
-                elif param == "request_type":
-                    msg[param] = REQUEST_TYPE(value).name
+                elif param in ["ev_power", "house_power", "solar_power"]:
+                    msg[param] = float(value) / 10
                 else:
                     msg[param] = value
             except ValueError:

@@ -74,8 +74,7 @@ Currently, integration creates charger device with following sensors:
 | maximum_session_consumption       | [kWh]           | Session based maximum consumption                                                |
 | timer_start        | [timestamp]     | Currently set timer start time                                                |
 | timer_end          | [timestamp]     | Currently set timer end time                                                  |
-| grid_import**      | [kW]            | Imported power from grid                                                      |
-| grid_export**      | [kW]            | Exported power from grid                                                      |
+| grid_power**      | [kW]            | Import/export power from grid                                                  |
 | solar_power**      | [kW]            | Solar power                                                                   |
 | ev_power**         | [kW]            | Power for charging EV                                                         |
 | house_power**      | [kW]            | Power for house                                                               |
@@ -86,6 +85,8 @@ Currently, integration creates charger device with following sensors:
 ### Actions
 
 Currently integration supports following actions:
+
+Controls for Setting Maximum charge current.
 
 *Only when EV is plugged to charger:*
 - beny_wifi.start_charging (*device_id*)
@@ -102,7 +103,6 @@ Currently integration supports following actions:
 ### Roadmap
 
 I am pretty busy with the most adorable baby boy right now, but I'll be adding some bells and whistles when I have a moment:
-- add possibility to set maximum current
 
 ### Troubleshooting guide
 

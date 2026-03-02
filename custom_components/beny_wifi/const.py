@@ -5,7 +5,8 @@ from typing import Final
 
 from homeassistant.const import Platform
 
-PLATFORMS: Final = [Platform.SENSOR]
+# Updated to include NUMBER and BUTTON platforms
+PLATFORMS: Final = [Platform.SENSOR, Platform.NUMBER, Platform.BUTTON]
 
 NAME: Final = "Beny Wifi"
 DOMAIN: Final = "beny_wifi"
@@ -39,9 +40,9 @@ def calculate_checksum(data: str) -> int:
 
     # if there is a placeholder in command message, skip that one
     if "[checksum]" in data:
-        data = data[:-len("[checksum]")].strip()
+        data = data[:-len("[checksum]")]
     else:
-        data = data[:-2].strip()
+        data = data[:-2]
 
     return sum([int(data[i:i+2], 16) for i in range(0, len(data), 2)]) % 256
 
@@ -333,10 +334,10 @@ class CLIENT_MESSAGE(Enum):
         }
     }
 
-    # DO NOT USE, UNCONFIRMED PARAMETERS
-    SET_VALUES = {
+    # ADDED FROM v0.8.1
+    SET_MAX_CURRENT = {
         "description": "Send setting values to charger",
-        "hex": "55aa10000d000[pin]6d00[max_amps][checksum]",
+        "hex": "55aa10000d000[pin]6d00[max_current][checksum]",
         "structure": {
             "pin": slice(13,18)
         }
@@ -404,14 +405,14 @@ class SERVER_MESSAGE(Enum):
         }
     }
     SEND_DLB = {
+        # ORIGINAL v0.7.0 - UNCHANGED
         "description": "Receive dlb values",
         "structure": {
             "request_type": slice(10, 12),
-            "solar_power": slice(18, 20),
-            "ev_power": slice(22, 24),
-            "house_power": slice(26, 28),
-            "grid_export": slice(28, 30),
-            "grid_power": slice(30, 32)
+            "solar_power": slice(16, 20),
+            "ev_power": slice(20, 24),
+            "house_power": slice(24, 28),
+            "grid_power": slice(28, 32)
         }
     }
     ACCESS_DENIED = {

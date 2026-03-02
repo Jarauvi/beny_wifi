@@ -1,5 +1,7 @@
 """Sensors for Beny Wifi."""
 
+import logging
+
 from homeassistant.const import (
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
@@ -9,6 +11,8 @@ from homeassistant.const import (
 from homeassistant.helpers.entity import DeviceInfo, Entity
 
 from .const import CHARGER_TYPE, DLB, DOMAIN, MODEL, SERIAL
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -58,8 +62,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     # TODO: DLB
     if dlb:
         sensors.extend([
-            BenyWifiPowerSensor(coordinator, "grid_import", icon="mdi:transmission-tower-import", device_id=device_id, device_model=device_model),
-            BenyWifiPowerSensor(coordinator, "grid_export", icon="mdi:transmission-tower-export", device_id=device_id, device_model=device_model),
+            BenyWifiPowerSensor(coordinator, "grid_power", icon="mdi:transmission-tower", device_id=device_id, device_model=device_model),
             BenyWifiPowerSensor(coordinator, "solar_power", icon="mdi:solar-power-variant", device_id=device_id, device_model=device_model),
             BenyWifiPowerSensor(coordinator, "ev_power", icon="mdi:car-electric", device_id=device_id, device_model=device_model),
             BenyWifiPowerSensor(coordinator, "house_power", icon="mdi:home-lightning-bolt", device_id=device_id, device_model=device_model),
@@ -80,6 +83,7 @@ class BenyWifiSensor(Entity):
         self.entity_id = f"sensor.{device_id}_{key}"
         self._attr_has_entity_name = True
         self._icon = icon
+        self._last_valid_state = None
 
     @property
     def unique_id(self):
@@ -153,6 +157,90 @@ class BenyWifiPowerSensor(BenyWifiSensor):
     def unit_of_measurement(self):
         """Sensor unit."""
         return UnitOfPower.KILO_WATT
+
+    @property
+    def state(self):
+        """Return the current state of the sensor with spike filtering."""
+        raw_value = self.coordinator.data.get(self.key)
+        
+        # List of common communication error values
+        INVALID_VALUES = [65535, 65534, 999999, -1]
+        
+        try:
+            power = float(raw_value)
+            
+            # Check for communication error values
+            if power in INVALID_VALUES:
+                _LOGGER.warning(
+                    f"Beny {self._device_id} {self.key}: Communication error value detected: {power}, "
+                    f"using last valid value: {self._last_valid_state}"
+                )
+                return self._last_valid_state if self._last_valid_state is not None else 0
+            
+            # Define reasonable bounds based on sensor type
+            if self.key == "solar_power":
+                # Solar power should be 0 to max system capacity (adjust 20 to your system max + buffer)
+                min_valid = 0
+                max_valid = 30.0  # Adjust this to your solar system capacity + 20% buffer
+                
+                if not (min_valid <= power <= max_valid):
+                    _LOGGER.warning(
+                        f"Beny {self._device_id} {self.key}: Spike detected: {power} kW "
+                        f"(valid range: {min_valid}-{max_valid} kW), "
+                        f"using last valid value: {self._last_valid_state}"
+                    )
+                    return self._last_valid_state if self._last_valid_state is not None else 0
+                    
+            elif self.key == "grid_power":
+                # Grid power can be negative (export) or positive (import)
+                # Adjust these limits based on your grid connection capacity
+                min_valid = -30.0  # Max export
+                max_valid = 30.0   # Max import
+                
+                if not (min_valid <= power <= max_valid):
+                    _LOGGER.warning(
+                        f"Beny {self._device_id} {self.key}: Spike detected: {power} kW "
+                        f"(valid range: {min_valid}-{max_valid} kW), "
+                        f"using last valid value: {self._last_valid_state}"
+                    )
+                    return self._last_valid_state if self._last_valid_state is not None else 0
+                    
+            elif self.key in ["ev_power", "power"]:
+                # EV power should be 0 to max charger capacity
+                min_valid = 0
+                max_valid = 25.0  # Typical max for home EV chargers (adjust if needed)
+                
+                if not (min_valid <= power <= max_valid):
+                    _LOGGER.warning(
+                        f"Beny {self._device_id} {self.key}: Spike detected: {power} kW "
+                        f"(valid range: {min_valid}-{max_valid} kW), "
+                        f"using last valid value: {self._last_valid_state}"
+                    )
+                    return self._last_valid_state if self._last_valid_state is not None else 0
+                    
+            elif self.key == "house_power":
+                # House power - adjust based on your main breaker capacity
+                min_valid = 0
+                max_valid = 50.0  # Typical house load (adjust to your needs)
+                
+                if not (min_valid <= power <= max_valid):
+                    _LOGGER.warning(
+                        f"Beny {self._device_id} {self.key}: Spike detected: {power} kW "
+                        f"(valid range: {min_valid}-{max_valid} kW), "
+                        f"using last valid value: {self._last_valid_state}"
+                    )
+                    return self._last_valid_state if self._last_valid_state is not None else 0
+            
+            # Value is valid, store it and return it
+            self._last_valid_state = power
+            return power
+            
+        except (ValueError, TypeError) as e:
+            _LOGGER.error(
+                f"Beny {self._device_id} {self.key}: Invalid value received: {raw_value}, error: {e}, "
+                f"using last valid value: {self._last_valid_state}"
+            )
+            return self._last_valid_state if self._last_valid_state is not None else 0
 
 class BenyWifiTemperatureSensor(BenyWifiSensor):
     """Temperature sensor class."""

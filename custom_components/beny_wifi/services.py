@@ -106,6 +106,18 @@ async def async_setup_services(hass: HomeAssistant) -> bool:
         else:
             _LOGGER.error(f"Device id {call.data[ATTR_DEVICE_ID]} not found")  # noqa: G004
 
+    async def async_handle_set_max_current(call: ServiceCall):
+        """Set maximum charging current."""
+
+        coordinator: BenyWifiUpdateCoordinator = _get_coordinator_from_device(hass, call)["coordinator"]
+        if coordinator:
+            device_name = _get_device_name(hass, call.data[ATTR_DEVICE_ID])
+            max_current = call.data.get("max_current", None)
+
+            await coordinator.async_set_max_current(device_name, max_current)
+        else:
+            _LOGGER.error(f"Device id {call.data[ATTR_DEVICE_ID]} not found")  # noqa: G004
+
     async def async_handle_request_weekly_schedule(call: ServiceCall):
         """Reset charging timer."""
 
@@ -125,7 +137,8 @@ async def async_setup_services(hass: HomeAssistant) -> bool:
         "set_maximum_session_consumption": async_handle_set_max_session_consumption,
         "set_timer": async_handle_set_timer,
         "reset_timer": async_handle_reset_timer,
-        "set_weekly_schedule": async_handle_set_schedule
+        "set_weekly_schedule": async_handle_set_schedule,
+        "set_max_current": async_handle_set_max_current,
     }
 
     for _name, _service in services.items():
