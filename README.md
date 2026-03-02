@@ -11,7 +11,9 @@
     <img alt="Version" src="https://img.shields.io/github/manifest-json/v/Jarauvi/beny_wifi?filename=custom_components%2Fbeny_wifi%2Fmanifest.json&label=Version">
 </div>
 
-*PRs accepted! My progress with this integration is veeery slow right now and I definitely appreciate help!*
+*Hi everyone, I wanted to apologize for the lack of updates over the last year. Personal circumstances required my full attention, and unfortunately, this project had to take a backseat.*
+
+*I will try my best to address the issues, but PRs are still accepted and very much appreciated!*
 
 ⚠️*DISCLAIMER: I DO NOT TAKE ANY RESPONSIBILITY OF DAMAGED OR DESTROYED PROPERTY, INJURIES OR HUMAN CASUALTIES. USE AT YOUR OWN RISK*
 
