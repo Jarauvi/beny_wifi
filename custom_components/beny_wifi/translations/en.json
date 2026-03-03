@@ -80,6 +80,12 @@
       "button": {
         "send_max_current": {
           "name": "Send Max Current"
+        },
+        "start_charging": {
+          "name": "Start Charging"
+        },
+        "stop_charging": {
+          "name": "Stop Charging"
         }
       }
     },

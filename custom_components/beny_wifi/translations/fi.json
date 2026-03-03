@@ -80,6 +80,12 @@
       "button": {
         "send_max_current": {
           "name": "Lähetä maksimi virta"
+        },
+        "start_charging": {
+          "name": "Aloita lataus"
+        },
+        "stop_charging": {
+          "name": "Pysäytä lataus"
         }
       }
     },
