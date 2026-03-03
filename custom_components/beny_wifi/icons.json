@@ -8,5 +8,12 @@
       "set_weekly_schedule": {"service": "mdi:calendar-clock"},
       "request_weekly_schedule": {"service": "mdi:calendar-export"},
       "reset_timer": {"service": "mdi:timer-off-outline"}
+    },
+    "entity": {
+      "button": {
+        "start_charging": {"default": "mdi:power-plug"},
+        "stop_charging": {"default": "mdi:power-plug-off"},
+        "send_max_current": {"default": "mdi:send"}
+      }
     }
   }

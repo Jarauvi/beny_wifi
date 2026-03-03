@@ -22,7 +22,19 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             "send_max_current",
             device_id=device_id,
             device_model=device_model,
-        )
+        ),
+        BenyWifiStartChargingButton(
+            coordinator,
+            "start_charging",
+            device_id=device_id,
+            device_model=device_model,
+        ),
+        BenyWifiStopChargingButton(
+            coordinator,
+            "stop_charging",
+            device_id=device_id,
+            device_model=device_model,
+        ),
     ]
 
     async_add_entities(buttons)
@@ -110,6 +122,79 @@ class BenyWifiSendMaxCurrentButton(ButtonEntity):
                 f"Error converting max current value from {used_entity_id}: "
                 f"state={number_state.state}, error: {e}"
             )
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._device_id)},
+            name=f"Beny Charger {self._device_id}",
+            manufacturer="ZJ Beny",
+            model=self._device_model,
+            serial_number=self._device_id,
+        )
+
+class BenyWifiStartChargingButton(ButtonEntity):
+    """Button to start charging."""
+
+    def __init__(self, coordinator, key, device_id=None, device_model=None):
+        """Initialize the button entity."""
+        self.coordinator = coordinator
+        self.key = key
+        self._attr_translation_key = key
+        self._device_id = device_id
+        self._device_model = device_model
+        self.entity_id = f"button.{device_id}_{key}"
+        self._attr_has_entity_name = True
+        self._attr_icon = "mdi:power-plug"
+
+    @property
+    def unique_id(self):
+        """Return a unique ID for this button entity."""
+        return f"{self._device_id}_{self.key}"
+
+    async def async_press(self) -> None:
+        """Handle the button press - send start charging command to device."""
+        device_name = f"Beny Charger {self._device_id}"
+        await self.coordinator.async_toggle_charging(device_name, "start")
+        _LOGGER.info(f"Start charging button pressed for {device_name}")
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._device_id)},
+            name=f"Beny Charger {self._device_id}",
+            manufacturer="ZJ Beny",
+            model=self._device_model,
+            serial_number=self._device_id,
+        )
+
+
+class BenyWifiStopChargingButton(ButtonEntity):
+    """Button to stop charging."""
+
+    def __init__(self, coordinator, key, device_id=None, device_model=None):
+        """Initialize the button entity."""
+        self.coordinator = coordinator
+        self.key = key
+        self._attr_translation_key = key
+        self._device_id = device_id
+        self._device_model = device_model
+        self.entity_id = f"button.{device_id}_{key}"
+        self._attr_has_entity_name = True
+        self._attr_icon = "mdi:power-plug-off"
+
+    @property
+    def unique_id(self):
+        """Return a unique ID for this button entity."""
+        return f"{self._device_id}_{self.key}"
+
+    async def async_press(self) -> None:
+        """Handle the button press - send stop charging command to device."""
+        device_name = f"Beny Charger {self._device_id}"
+        await self.coordinator.async_toggle_charging(device_name, "stop")
+        _LOGGER.info(f"Stop charging button pressed for {device_name}")
 
     @property
     def device_info(self) -> DeviceInfo:
