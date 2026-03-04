@@ -42,8 +42,9 @@ Integration should support 1-phase and 3-phase "smart" chargers with or without 
 
 | Model              | Firmware version |       Status      |
 | ------------------ | ---------------- | ----------------- |
-| BCP-AT1N-L         | 1.26             | ✅                |
+| BCP-AT1N-L         | 1.28             | ✅                |
 | BCP-A2-L           | 1.28             | ✅                |
+| BCP-A2N-L          | 1.28             | ✅                |
 
 ### Installation
 
@@ -110,10 +111,6 @@ Controls for Setting Maximum charge current.
 - beny_wifi.request_weekly_schedule (*device_id*)
 - beny_wifi.set_weekly_schedule (*device_id | sunday | monday | tuesday | wednesday | thursday | friday | saturday | start time | end time)
 - beny_wifi.set_maximum_monthly_consumption (*device_id | maximum_consumption*)
-
-### Roadmap
-
-I am pretty busy with the most adorable baby boy right now, but I'll be adding some bells and whistles when I have a moment:
 
 ### Troubleshooting guide
 
