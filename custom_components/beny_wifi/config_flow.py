@@ -209,30 +209,41 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.exception("Cannot resolve device IP, you can try to set it manually")  # noqa: G004, TRY401
                 return None
 
-            try:
-                request = build_message(CLIENT_MESSAGE.REQUEST_DATA, {"pin": dev_data["pin"], "request_type": get_hex(REQUEST_TYPE.MODEL.value)}).encode('ascii')
-                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                sock.settimeout(5)
-                sock.sendto(request, (dev_data['ip_address'], dev_data['port']))
-                _LOGGER.debug(f"Sent model request to {dev_data['ip_address']}:{dev_data['port']}")  # noqa: G004
-            except Exception as ex:  # noqa: BLE001
-                self._errors["base"] = "cannot_connect"
-                _LOGGER.exception(f"Exception sending model request to {dev_data['ip_address']}:{dev_data['port']}. Cause: {ex}. Request: {request}")  # noqa: G004, TRY401
-                return None
+            data = self._send_model_request(dev_data['ip_address'], dev_data['port'], dev_data['pin'], "55aa10")
+            if not data:
+                data = self._send_model_request(dev_data['ip_address'], dev_data['port'], dev_data['pin'], "55aa04")
 
-            try:
-                response, addr = sock.recvfrom(1024)
-                _LOGGER.debug(f"Model message received from {dev_data['ip_address']}:{dev_data['port']}")  # noqa: G004
-                sock.close()
-                response = response.decode('ascii')
-                data = read_message(response)
-                _LOGGER.debug(f"Model message data: {data}")  # noqa: G004
-                dev_data['model'] = data.get("model", "Charger")
-            except Exception as ex:  # noqa: BLE001
+            if not data:
                 self._errors["base"] = "cannot_communicate"
-                _LOGGER.exception(f"Exception receiving model data from {dev_data['ip_address']}:{dev_data['port']}. Cause: {ex}. Request hex: {request}. Response hex: {response}. Translated response: {data}")  # noqa: G004, TRY401
                 return None
 
-            return dev_data  # noqa: TRY300
+            dev_data["model"] = data.get("model", "Charger")
+
+            return dev_data
 
         return await asyncio.to_thread(sync_socket_communication)
+
+    def _send_model_request(self, ip, port, pin, header_prefix):
+        try:
+            request = build_message(
+                CLIENT_MESSAGE.REQUEST_DATA,
+                {"pin": pin, "request_type": get_hex(REQUEST_TYPE.MODEL.value)},
+                header_prefix=header_prefix
+            ).encode("ascii")
+        except Exception as ex:
+            self._errors["base"] = "cannot_connect"
+            _LOGGER.exception(f"Exception sending model request to {ip}:{port}. Cause: {ex}. Request: {request}")  # noqa: G004, TRY401
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(2)
+        sock.sendto(request, (ip, port))
+
+        try:
+            response, _ = sock.recvfrom(1024)
+            sock.close()
+            data = read_message(response.decode("ascii"))
+            return data
+        except Exception as ex:
+            self._errors["base"] = "cannot_communicate"
+            _LOGGER.exception(f"Exception receiving model data from {ip}:{port}. Cause: {ex}. Request hex: {request}. Response hex: {response}. Translated response: {data}")  # noqa: G004, TRY401
+            return None

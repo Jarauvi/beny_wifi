@@ -131,7 +131,7 @@ def read_message(data, msg_type:str | None = None) -> dict:  # noqa: C901
 
     return msg
 
-def build_message(message: SERVER_MESSAGE | CLIENT_MESSAGE, params: dict = {}) -> str:
+def build_message(message: SERVER_MESSAGE | CLIENT_MESSAGE, params: dict = {}, header_prefix=None) -> str:
     """Build command message that can be sent to charger.
 
     Args:
@@ -144,6 +144,8 @@ def build_message(message: SERVER_MESSAGE | CLIENT_MESSAGE, params: dict = {}) -
     """
 
     msg = message.value["hex"]
+    if header_prefix:
+        msg = header_prefix + msg[6:]
     for param, val in params.items():
         if param in msg:
             msg = msg.replace("[" + param + "]", val)
