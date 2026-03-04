@@ -155,7 +155,8 @@ def get_message_type(data: str) -> CLIENT_MESSAGE | SERVER_MESSAGE:
     if msg_int == 31:
         return SERVER_MESSAGE.SEND_VALUES_1P
         
-    if msg_int == 35:
+    # Additional status message type 36 added
+    if msg_int == 35 or msg_int == 36:
         return SERVER_MESSAGE.SEND_VALUES_3P
     if msg_int == 33:
         return SERVER_MESSAGE.SEND_DLB
