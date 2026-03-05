@@ -101,10 +101,10 @@
         "dlb_mode": {
           "name": "DLB Mode",
           "state": {
-            "Pure PV":    "Pure PV",
-            "Hybrid":     "Hybrid",
-            "Full Speed": "Full Speed",
-            "DLB Box":    "DLB Box"
+            "pure_pv":    "Pure PV",
+            "hybrid":     "Hybrid",
+            "full_speed": "Full Speed",
+            "dlb_box":    "DLB Box"
           }
         }
       },

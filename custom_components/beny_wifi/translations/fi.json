@@ -101,10 +101,10 @@
         "dlb_mode": {
           "name": "DLB-tila",
           "state": {
-            "Pure PV":    "Pelkkä aurinkosähkö",
-            "Hybrid":     "Hybridi",
-            "Full Speed": "Täysi teho",
-            "DLB Box":    "DLB-laite"
+            "pure_pv":    "Pelkkä aurinkosähkö",
+            "hybrid":     "Hybridi",
+            "full_speed": "Täysi teho",
+            "dlb_box":    "DLB-laite"
           }
         }
       },
