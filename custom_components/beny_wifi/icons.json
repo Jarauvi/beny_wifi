@@ -1,19 +1,14 @@
 {
     "services": {
-      "start_charging": {"service": "mdi:power-plug"},
-      "stop_charging": {"service": "mdi:power-plug-off"},
+      "start_charging":                  {"service": "mdi:power-plug"},
+      "stop_charging":                   {"service": "mdi:power-plug-off"},
       "set_maximum_monthly_consumption": {"service": "mdi:meter-electric"},
       "set_maximum_session_consumption": {"service": "mdi:meter-electric"},
-      "set_timer": {"service": "mdi:timer-outline"},
-      "set_weekly_schedule": {"service": "mdi:calendar-clock"},
-      "request_weekly_schedule": {"service": "mdi:calendar-export"},
-      "reset_timer": {"service": "mdi:timer-off-outline"}
-    },
-    "entity": {
-      "button": {
-        "start_charging": {"default": "mdi:power-plug"},
-        "stop_charging": {"default": "mdi:power-plug-off"},
-        "send_max_current": {"default": "mdi:send"}
-      }
+      "set_timer":                       {"service": "mdi:timer-outline"},
+      "set_weekly_schedule":             {"service": "mdi:calendar-clock"},
+      "request_weekly_schedule":         {"service": "mdi:calendar-export"},
+      "reset_timer":                     {"service": "mdi:timer-off-outline"},
+      "set_max_current":                 {"service": "mdi:current-ac"},
+      "set_dlb_config":                  {"service": "mdi:solar-power"}
     }
   }

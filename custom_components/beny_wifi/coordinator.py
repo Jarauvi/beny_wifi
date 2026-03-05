@@ -16,6 +16,7 @@ from .const import (
     CLIENT_MESSAGE,
     CONF_PIN,
     DLB,
+    DLB_MODE,
     DOMAIN,
     REQUEST_TYPE,
     SERIAL,
@@ -23,6 +24,10 @@ from .const import (
 from .conversions import convert_schedule, convert_timer, get_hex
 
 _LOGGER = logging.getLogger(__name__)
+
+# Default night mode window used when enabling night mode without prior state
+DEFAULT_NIGHT_START = 22  # 10pm
+DEFAULT_NIGHT_END = 6     # 6am
 
 
 class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -48,13 +53,73 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.ip_address = ip_address
         self.port = port
         self.hass = hass
+        self._dlb_config_loaded = False  # set True after first successful read from charger
+
+        # Local cache of DLB config state — populated on first SET and preserved
+        # across updates so we never accidentally reset a field we didn't intend to change.
+        # Restored from config_entry.options if previously persisted, otherwise defaults.
+        persisted = config_entry.options.get("dlb_config", {})
+        self._dlb_config: dict = {
+            "extreme":        persisted.get("extreme",        0x00),
+            "dlb_mode":       persisted.get("dlb_mode",       0xff),   # default: DLB Box
+            "night":          persisted.get("night",          0x00),
+            "night_start":    persisted.get("night_start",    DEFAULT_NIGHT_START),
+            "night_end":      persisted.get("night_end",      DEFAULT_NIGHT_END),
+            "hybrid_current": persisted.get("hybrid_current", 16),
+        }
+        if persisted:
+            _LOGGER.debug(f"DLB config restored from config_entry.options: {self._dlb_config}")  # noqa: G004
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data asynchronously."""
         return await self._fetch_data()
 
+    async def async_read_dlb_config(self) -> bool:
+        """Attempt to read current DLB config from charger to populate _dlb_config cache.
+
+        The charger does not support a dedicated config-read command — it responds to
+        GET_DLB_CONFIG with a denial packet (message_id=8). This method therefore always
+        returns True (marking the attempt as done) so the coordinator stops retrying.
+
+        Config is populated via two other mechanisms instead:
+          - Persisted values from config_entry.options (restored in __init__)
+          - ACK parsing after every async_set_dlb_config call
+
+        Returns:
+            bool: Always True — signals caller not to retry.
+        """
+        persisted = self.config_entry.options.get("dlb_config", {})
+        if persisted:
+            _LOGGER.info(  # noqa: G004
+                f"DLB config loaded from persisted options: "
+                f"extreme={self._dlb_config['extreme']:#04x} "
+                f"dlb_mode={self._dlb_config['dlb_mode']:#04x} "
+                f"night={self._dlb_config['night']:#04x} "
+                f"night_start={self._dlb_config['night_start']} "
+                f"night_end={self._dlb_config['night_end']}"
+            )
+        else:
+            _LOGGER.info(
+                "No persisted DLB config found — using defaults. "
+                "Values will be saved automatically after the first DLB setting change."
+            )
+        return True
+
+    async def _async_persist_dlb_config(self) -> None:
+        """Persist _dlb_config to config_entry.options so it survives HA restarts."""
+        options = dict(self.config_entry.options)
+        options["dlb_config"] = dict(self._dlb_config)
+        self.hass.config_entries.async_update_entry(self.config_entry, options=options)
+        _LOGGER.debug(f"DLB config persisted to config_entry.options: {self._dlb_config}")  # noqa: G004
+
     async def _fetch_data(self):
         """Send UDP request and fetch data asynchronously."""
+
+        # On the first successful fetch, attempt to read DLB config directly from
+        # the charger so entities reflect actual state rather than defaults/persisted cache.
+        if self.config_entry.data.get(DLB) and not self._dlb_config_loaded:
+            self._dlb_config_loaded = await self.async_read_dlb_config()
+
         try:
             # Build the request message
             request = build_message(
@@ -63,7 +128,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             ).encode('ascii')
 
             # Send UDP request asynchronously
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             response = await loop.run_in_executor(None, self._send_udp_request, request)
 
             # Decode and parse the response
@@ -125,24 +190,38 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             data['total_kwh'] = float(data['total_kwh'])
             data['temperature'] = int(data['temperature'] - 100)
 
-            # ORIGINAL v0.7.0 DLB HANDLING - UNCHANGED
+            # DLB data fetch — isolated so a DLB failure doesn't discard valid charger data
             if self.config_entry.data[DLB]:
-                # Build the dlb request message
-                request = build_message(
-                    CLIENT_MESSAGE.REQUEST_DLB,
-                    {"pin": self.config_entry.data[CONF_PIN], "request_type": get_hex(REQUEST_TYPE.DLB.value)}
-                ).encode('ascii')
+                try:
+                    request = build_message(
+                        CLIENT_MESSAGE.REQUEST_DLB,
+                        {"pin": self.config_entry.data[CONF_PIN], "request_type": get_hex(REQUEST_TYPE.DLB.value)}
+                    ).encode('ascii')
 
-                # Send UDP request asynchronously
-                loop = asyncio.get_event_loop()
-                response_dlb = await loop.run_in_executor(None, self._send_udp_request, request)
-                response_dlb = response_dlb.decode('ascii')
-                data_dlb = read_message(response_dlb)
+                    loop = asyncio.get_running_loop()
+                    response_dlb = await loop.run_in_executor(None, self._send_udp_request, request)
+                    response_dlb = response_dlb.decode('ascii')
+                    data_dlb = read_message(response_dlb)
 
-                data['grid_power'] = float(data_dlb['grid_power']) / 10
-                data['house_power'] = float(data_dlb['house_power']) / 10
-                data['ev_power'] = float(data_dlb['ev_power']) / 10
-                data['solar_power'] = float(data_dlb['solar_power']) / 10
+                    if data_dlb is None:
+                        _LOGGER.warning("DLB response had invalid checksum — skipping DLB data this cycle")
+                    else:
+                        # Only assign non-None values; None means the charger sent a sentinel
+                        # (0xFF00+) indicating DLB data is temporarily unavailable.
+                        # Omitting the key lets BenyWifiPowerSensor retain its last valid state.
+                        for key in ("grid_power", "house_power", "ev_power", "solar_power"):
+                            val = data_dlb.get(key)
+                            if val is not None:
+                                data[key] = val
+
+                except Exception as dlb_err:
+                    _LOGGER.warning(
+                        f"DLB fetch failed (non-fatal): {dlb_err} — DLB sensors will retain last valid value"
+                    )
+                    # Do not re-raise: the primary charger data is still valid
+
+            # Expose current DLB config state so entities can read it
+            data['dlb_config'] = dict(self._dlb_config)
 
             return data
 
@@ -198,7 +277,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 _LOGGER.error(f"Unknown command: {command}")
                 return
 
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             await loop.run_in_executor(None, self._send_udp_request, request)
             _LOGGER.info(f"{device_name}: {command} charging command sent")
 
@@ -206,7 +285,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Set maximum consumption."""
 
         request = build_message(CLIENT_MESSAGE.SET_MAX_MONTHLY_CONSUMPTION, {"pin": self.config_entry.data[CONF_PIN], "maximum_consumption": get_hex(maximum_consumption, 4)}).encode('ascii')
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self._send_udp_request, request)
 
         _LOGGER.info(f"{device_name}: maximum consumption set")
@@ -215,7 +294,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Set maximum consumption."""
 
         request = build_message(CLIENT_MESSAGE.SET_MAX_SESSION_CONSUMPTION, {"pin": self.config_entry.data[CONF_PIN], "maximum_consumption": get_hex(maximum_consumption)}).encode('ascii')
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self._send_udp_request, request)
 
         _LOGGER.info(f"{device_name}: maximum consumption set")
@@ -231,7 +310,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             timer_data = convert_timer(start_time, end_time)
             timer_data['pin'] = self.config_entry.data[CONF_PIN]
             request = build_message(CLIENT_MESSAGE.SET_TIMER, timer_data).encode('ascii')
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             await loop.run_in_executor(None, self._send_udp_request, request)
 
             _LOGGER.info(f"{device_name}: charging timer set")
@@ -241,7 +320,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         schedule_data = convert_schedule(reversed(weekdays), start_time, end_time)
         schedule_data['pin'] = self.config_entry.data[CONF_PIN]
         request = build_message(CLIENT_MESSAGE.SET_SCHEDULE, schedule_data).encode('ascii')
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self._send_udp_request, request)
 
         _LOGGER.info(f"{device_name}: charging schedule set")
@@ -255,7 +334,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         if state_sensor_value and state_sensor_value.state != CHARGER_STATE.UNPLUGGED.name.lower():
             request = build_message(CLIENT_MESSAGE.RESET_TIMER, {"pin": self.config_entry.data[CONF_PIN]}).encode('ascii')
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             await loop.run_in_executor(None, self._send_udp_request, request)
             _LOGGER.info(f"{device_name}: charging timer reset")
 
@@ -263,7 +342,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Get set weekly schedule from charger."""
 
         request = build_message(CLIENT_MESSAGE.REQUEST_SETTINGS, {"pin": self.config_entry.data[CONF_PIN]}).encode('ascii')
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         response = await loop.run_in_executor(None, self._send_udp_request, request)
         # Decode and parse the response
         response = response.decode('ascii')
@@ -281,7 +360,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         }
 
     async def async_set_max_current(self, device_name: str, max_current: int):
-        """Set maximum charging current (6A–32A) on the charger."""
+        """Set maximum charging current (6A-32A) on the charger."""
         if not (6 <= max_current <= 32):
             raise ValueError("Maximum current must be between 6 and 32 amps")
 
@@ -293,7 +372,102 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             },
         ).encode("ascii")
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self._send_udp_request, request)
 
         _LOGGER.info(f"{device_name}: max current set to {max_current}A")
+
+    async def async_set_dlb_config(
+        self,
+        device_name: str,
+        *,
+        dlb_mode: DLB_MODE | None = None,
+        hybrid_current: int | None = None,
+        extreme_mode: bool | None = None,
+        night_mode: bool | None = None,
+        night_start: int | None = None,
+        night_end: int | None = None,
+    ) -> None:
+        """Send full DLB config to charger.
+
+        Only the supplied keyword arguments are changed — all others are preserved
+        from the local cache so we never accidentally reset a field.
+
+        Args:
+            device_name:    Human-readable device label for logging.
+            dlb_mode:       DLB_MODE enum value. For HYBRID, also supply hybrid_current.
+            hybrid_current: Current limit in amps (6-32) when dlb_mode=HYBRID.
+            extreme_mode:   True to enable Extreme Mode, False to disable.
+            night_mode:     True to enable Night Mode, False to disable.
+            night_start:    Night mode start hour (0-23, 24h).
+            night_end:      Night mode end hour (0-23, 24h).
+        """
+        cfg = self._dlb_config
+
+        # Apply any supplied overrides
+        if extreme_mode is not None:
+            cfg["extreme"] = 0x01 if extreme_mode else 0x00
+
+        if night_mode is not None:
+            cfg["night"] = 0x01 if night_mode else 0x00
+
+        if night_start is not None:
+            if not (0 <= night_start <= 23):
+                raise ValueError("night_start must be 0-23")
+            cfg["night_start"] = night_start
+
+        if night_end is not None:
+            if not (0 <= night_end <= 23):
+                raise ValueError("night_end must be 0-23")
+            cfg["night_end"] = night_end
+
+        if dlb_mode is not None:
+            if dlb_mode == DLB_MODE.HYBRID:
+                # For hybrid, byte12 carries the actual current limit
+                current = hybrid_current if hybrid_current is not None else cfg["hybrid_current"]
+                if not (6 <= current <= 32):
+                    raise ValueError("hybrid_current must be between 6 and 32 amps")
+                cfg["hybrid_current"] = current
+                cfg["dlb_mode"] = current  # byte12 = amps value directly
+            else:
+                cfg["dlb_mode"] = dlb_mode.value
+
+        # Determine byte12 to send
+        dlb_mode_byte = cfg["dlb_mode"]
+        # If dlb_mode is stored as an int (hybrid current), use it directly
+        # If it's a DLB_MODE enum value use its .value (shouldn't happen but guard anyway)
+        if isinstance(dlb_mode_byte, DLB_MODE):
+            dlb_mode_byte = dlb_mode_byte.value
+
+        request = build_message(
+            CLIENT_MESSAGE.SET_DLB_CONFIG,
+            {
+                "pin":         self.config_entry.data[CONF_PIN],
+                "extreme":     format(cfg["extreme"],     "02x"),
+                "dlb_mode":    format(dlb_mode_byte,      "02x"),
+                "night":       format(cfg["night"],        "02x"),
+                "night_start": format(cfg["night_start"],  "02x"),
+                "night_end":   format(cfg["night_end"],    "02x"),
+            },
+        ).encode("ascii")
+
+        loop = asyncio.get_running_loop()
+        response = await loop.run_in_executor(None, self._send_udp_request, request)
+
+        # Parse the ACK — the charger echoes back the full config it applied.
+        # This confirms what was stored and keeps _dlb_config in sync.
+        try:
+            ack = read_message(response.decode("ascii"))
+            if ack and ack.get("message_type") == str(SERVER_MESSAGE.SEND_DLB_CONFIG):
+                _LOGGER.debug(f"SET_DLB_CONFIG ACK confirmed by charger: {ack}")  # noqa: G004
+        except Exception as ack_err:
+            _LOGGER.debug(f"Could not parse SET_DLB_CONFIG ACK (non-fatal): {ack_err}")  # noqa: G004
+
+        await self._async_persist_dlb_config()
+
+        _LOGGER.info(
+            f"{device_name}: DLB config set — "
+            f"extreme={cfg['extreme']:#04x} dlb_mode={dlb_mode_byte:#04x} "
+            f"night={cfg['night']:#04x} "
+            f"night_start={cfg['night_start']} night_end={cfg['night_end']}"
+        )
