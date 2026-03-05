@@ -75,6 +75,15 @@
       "number": {
         "max_current_control": {
           "name": "Maksimi virran säätö"
+        },
+        "hybrid_current": {
+          "name": "Hybridi virtaraja"
+        },
+        "night_start_hour": {
+          "name": "Yötilan alkutunti"
+        },
+        "night_end_hour": {
+          "name": "Yötilan lopetustunti"
         }
       },
       "button": {
@@ -86,6 +95,25 @@
         },
         "stop_charging": {
           "name": "Pysäytä lataus"
+        }
+      },
+      "select": {
+        "dlb_mode": {
+          "name": "DLB-tila",
+          "state": {
+            "Pure PV":    "Pelkkä aurinkosähkö",
+            "Hybrid":     "Hybridi",
+            "Full Speed": "Täysi teho",
+            "DLB Box":    "DLB-laite"
+          }
+        }
+      },
+      "switch": {
+        "extreme_mode": {
+          "name": "Äärimmäinen tila"
+        },
+        "night_mode": {
+          "name": "Yötila"
         }
       }
     },
@@ -256,6 +284,54 @@
           "maximum_consumption": {
             "name": "Latausraja",
             "description": "Latausraja kilowattitunteina"
+          }
+        }
+      },
+      "set_max_current": {
+        "name": "Aseta maksimi virta",
+        "description": "Asettaa maksimi latausvirran",
+        "fields": {
+          "device_id": {
+            "name": "Latausasema",
+            "description": "Kohteena toimiva latausasema"
+          },
+          "max_current": {
+            "name": "Maksimi virta",
+            "description": "Maksimi latausvirta ampeereissa (6–32A)"
+          }
+        }
+      },
+      "set_dlb_config": {
+        "name": "Aseta DLB-asetukset",
+        "description": "Määrittää DLB-tilan, äärimmäisen tilan ja yötilan. Kaikki kentät ovat valinnaisia — vain annetut kentät muutetaan.",
+        "fields": {
+          "device_id": {
+            "name": "Latausasema",
+            "description": "Kohteena toimiva latausasema"
+          },
+          "dlb_mode": {
+            "name": "DLB-tila",
+            "description": "DLB-toimintatila (dlb_box, full_speed, hybrid, pure_pv)"
+          },
+          "hybrid_current": {
+            "name": "Hybridi virtaraja",
+            "description": "Virtaraja ampeereissa hybriditilassa (6–32A)"
+          },
+          "extreme_mode": {
+            "name": "Äärimmäinen tila",
+            "description": "Vähennä tai pysäytä lataus, kun kodin kuorma on suuri"
+          },
+          "night_mode": {
+            "name": "Yötila",
+            "description": "Ota käyttöön täystehoinen lataus yöaikaikkunan aikana"
+          },
+          "night_start": {
+            "name": "Yötilan alkutunti",
+            "description": "Tunti, jolloin yötila alkaa (0–23, 24h-kello)"
+          },
+          "night_end": {
+            "name": "Yötilan lopetustunti",
+            "description": "Tunti, jolloin yötila päättyy (0–23, 24h-kello)"
           }
         }
       }

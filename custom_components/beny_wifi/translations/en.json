@@ -75,6 +75,15 @@
       "number": {
         "max_current_control": {
           "name": "Max Current Control"
+        },
+        "hybrid_current": {
+          "name": "Hybrid Current Limit"
+        },
+        "night_start_hour": {
+          "name": "Night Mode Start Hour"
+        },
+        "night_end_hour": {
+          "name": "Night Mode End Hour"
         }
       },
       "button": {
@@ -86,6 +95,25 @@
         },
         "stop_charging": {
           "name": "Stop Charging"
+        }
+      },
+      "select": {
+        "dlb_mode": {
+          "name": "DLB Mode",
+          "state": {
+            "Pure PV":    "Pure PV",
+            "Hybrid":     "Hybrid",
+            "Full Speed": "Full Speed",
+            "DLB Box":    "DLB Box"
+          }
+        }
+      },
+      "switch": {
+        "extreme_mode": {
+          "name": "Extreme Mode"
+        },
+        "night_mode": {
+          "name": "Night Mode"
         }
       }
     },
@@ -256,6 +284,54 @@
           "maximum_consumption": {
             "name": "Maximum consumption",
             "description": "Limit value for maximum session consumption"
+          }
+        }
+      },
+      "set_max_current": {
+        "name": "Set max current",
+        "description": "Sets the maximum charging current",
+        "fields": {
+          "device_id": {
+            "name": "Charger",
+            "description": "Target charger"
+          },
+          "max_current": {
+            "name": "Max current",
+            "description": "Maximum charging current in amps (6–32A)"
+          }
+        }
+      },
+      "set_dlb_config": {
+        "name": "Set DLB config",
+        "description": "Configures DLB mode, Extreme Mode, and Night Mode. All fields are optional — only supplied fields are changed.",
+        "fields": {
+          "device_id": {
+            "name": "Charger",
+            "description": "Target charger"
+          },
+          "dlb_mode": {
+            "name": "DLB mode",
+            "description": "Primary DLB operating mode (dlb_box, full_speed, hybrid, pure_pv)"
+          },
+          "hybrid_current": {
+            "name": "Hybrid current limit",
+            "description": "Current limit in amps when DLB mode is Hybrid (6–32A)"
+          },
+          "extreme_mode": {
+            "name": "Extreme mode",
+            "description": "Reduce or stop charging when home load is high"
+          },
+          "night_mode": {
+            "name": "Night mode",
+            "description": "Enable full-speed charging during a nightly window"
+          },
+          "night_start": {
+            "name": "Night mode start hour",
+            "description": "Hour to begin Night Mode (0–23, 24h clock)"
+          },
+          "night_end": {
+            "name": "Night mode end hour",
+            "description": "Hour to end Night Mode (0–23, 24h clock)"
           }
         }
       }
