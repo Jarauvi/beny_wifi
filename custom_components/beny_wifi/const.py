@@ -247,10 +247,10 @@ class DLB_MODE(Enum):
 
 # Human-readable labels for the select entity
 DLB_MODE_OPTIONS = {
-    "Pure PV":    DLB_MODE.PURE_PV,
-    "Hybrid":     DLB_MODE.HYBRID,
-    "Full Speed": DLB_MODE.FULL_SPEED,
-    "DLB Box":    DLB_MODE.DLB_BOX,
+    "pure_pv":    DLB_MODE.PURE_PV,
+    "hybrid":     DLB_MODE.HYBRID,
+    "full_speed": DLB_MODE.FULL_SPEED,
+    "dlb_box":    DLB_MODE.DLB_BOX,
 }
 
 class COMMON(Enum):
