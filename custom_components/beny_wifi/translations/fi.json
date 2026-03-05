@@ -130,7 +130,34 @@
             "port": "Portti",
             "serial": "Sarjanumero",
             "pin": "PIN-koodi",
-            "update_interval": "Päivitysväli"
+            "update_interval": "Päivitysväli",
+            "max_current_min": "Virransäädön minimi (A)",
+            "max_current_max": "Virransäädön maksimi (A)",
+            "dlb": "DLB-moduuli asennettu?"
+          },
+          "data_description": {
+            "max_current_min": "Latausvirran säätimen alaraja (oletus 6A)",
+            "max_current_max": "Latausvirran säätimen yläraja (oletus 32A)",
+            "dlb": "Ota käyttöön vain, jos latausasemaan on liitetty valinnainen DLB-moduuli"
+          }
+        },
+        "reconfigure": {
+          "title": "Muokkaa latausasemaa",
+          "description": "Päivitä Beny Wifi integraation asetukset.",
+          "data": {
+            "ip_address": "IP-osoite (jos laite ei löydy sarjanumerolla)",
+            "port": "Portti",
+            "serial": "Sarjanumero",
+            "pin": "PIN-koodi",
+            "update_interval": "Päivitysväli",
+            "max_current_min": "Virransäädön minimi (A)",
+            "max_current_max": "Virransäädön maksimi (A)",
+            "dlb": "DLB-moduuli asennettu?"
+          },
+          "data_description": {
+            "max_current_min": "Latausvirran säätimen alaraja (oletus 6A)",
+            "max_current_max": "Latausvirran säätimen yläraja (oletus 32A)",
+            "dlb": "Ota käyttöön vain, jos latausasemaan on liitetty valinnainen DLB-moduuli"
           }
         }
       },
