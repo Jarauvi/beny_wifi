@@ -20,6 +20,18 @@ from .conversions import (  # type: ignore  # noqa: PGH003
 
 _LOGGER = logging.getLogger(__name__)
 
+# Values >= this threshold are error sentinels from the charger's DLB module,
+# sent when DLB data is temporarily unavailable (e.g. during state transitions).
+# Reverse-engineered from observed spike values of ~0xFF1D–0xFF56.
+_DLB_SENTINEL_THRESHOLD = 0xFF00
+
+# DLB power fields are encoded in 10W units (not 100W/deciwatts as the charger
+# value sensor uses). Dividing by 100 converts to kW.
+# Reverse-engineered from observed values: raw 274 → 2.74 kW solar, raw 371 → 3.71 kW house,
+# raw 97 → 0.97 kW grid, with energy balance solar+grid=house confirming the scale.
+_DLB_POWER_DIVISOR = 100
+
+
 def read_message(data, msg_type:str | None = None) -> dict:  # noqa: C901
     """Convert ascii hex string to dict.
 
@@ -75,14 +87,28 @@ def read_message(data, msg_type:str | None = None) -> dict:  # noqa: C901
                     if value >= 0x8000:
                         # Convert from two's complement
                         value = value - 0x10000
-                    msg[param] = float(value) / 10
+                    msg[param] = float(value) / _DLB_POWER_DIVISOR
                 elif param in ["ev_power", "house_power", "solar_power"]:
-                    msg[param] = float(value) / 10
+                    # Values >= 0xFF00 are error sentinels from the charger's DLB module,
+                    # sent when DLB data is temporarily unavailable. Return None so the
+                    # coordinator can retain the last valid reading rather than spiking.
+                    if value >= _DLB_SENTINEL_THRESHOLD:
+                        _LOGGER.debug(  # noqa: G004
+                            f"DLB sentinel value for {param}: {value:#06x} — skipping, will retain last valid"
+                        )
+                        msg[param] = None
+                    else:
+                        msg[param] = float(value) / _DLB_POWER_DIVISOR
                 else:
                     msg[param] = value
             except ValueError:
                 _LOGGER.error(f"Invalid value for {param}: value")  # noqa: G004
                 msg[param] = None
+
+    # charger ACKs SET_DLB_CONFIG or responds to GET_DLB_CONFIG with current config state
+    if msg_type == SERVER_MESSAGE.SEND_DLB_CONFIG:
+        for param, pos in msg_type.value["structure"].items():
+            msg[param] = int(data[pos], 16)
 
     # server sends charger model
     if msg_type == SERVER_MESSAGE.SEND_MODEL:

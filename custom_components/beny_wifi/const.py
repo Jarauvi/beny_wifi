@@ -463,3 +463,15 @@ class SERVER_MESSAGE(Enum):
             "timer_end_min": slice(38, 40),
         }
     }
+    SEND_DLB_CONFIG = {
+        "description": "Receive current DLB config from charger (ACK to SET_DLB_CONFIG or "
+                       "response to GET_DLB_CONFIG). Same byte layout as the SET command. "
+                       "Identified by message_type=6b (107) and message_id=0x0012 (18).",
+        "structure": {
+            "extreme":     slice(22, 24),
+            "dlb_mode":    slice(24, 26),
+            "night":       slice(26, 28),
+            "night_start": slice(28, 30),
+            "night_end":   slice(30, 32),
+        }
+    }
