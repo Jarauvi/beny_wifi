@@ -29,11 +29,11 @@ set_timer:
           integration: beny_wifi
     start_time:
       required: true
-      selector: 
+      selector:
         time: {}
     end_time:
       required: false
-      selector: 
+      selector:
         time: {}
 
 reset_timer:
@@ -57,39 +57,39 @@ set_weekly_schedule:
           integration: beny_wifi
     sunday:
       required: true
-      selector: 
+      selector:
         boolean: {}
     monday:
       required: true
-      selector: 
+      selector:
         boolean: {}
     tuesday:
       required: true
-      selector: 
+      selector:
         boolean: {}
     wednesday:
       required: true
-      selector: 
+      selector:
         boolean: {}
     thursday:
       required: true
-      selector: 
+      selector:
         boolean: {}
     friday:
       required: true
-      selector: 
+      selector:
         boolean: {}
     saturday:
       required: true
-      selector: 
+      selector:
         boolean: {}
     start_time:
       required: true
-      selector: 
+      selector:
         time: {}
     end_time:
       required: true
-      selector: 
+      selector:
         time: {}
 
 request_weekly_schedule:
@@ -140,7 +140,6 @@ set_maximum_session_consumption:
           unit_of_measurement: "kWh"
           mode: box
 
-# ADDED FROM v0.8.1
 set_max_current:
   name: "Set Max Current"
   description: "Set the maximum charging current in amps."
@@ -160,3 +159,81 @@ set_max_current:
           min: 6
           max: 32
           mode: slider
+
+set_dlb_config:
+  name: "Set DLB Config"
+  description: >
+    Configure the DLB (Dynamic Load Balancing) operating mode and associated options.
+    All fields are optional — only supplied fields are changed. The charger always
+    receives the full config, with unchanged fields preserved from the last known state.
+    Only available on DLB-capable chargers.
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: beny_wifi
+    dlb_mode:
+      name: "DLB Mode"
+      description: "Primary DLB operating mode."
+      required: false
+      example: "hybrid"
+      selector:
+        select:
+          options:
+            - label: "DLB Box (hardware controls current)"
+              value: "dlb_box"
+            - label: "Full Speed (no grid limiting)"
+              value: "full_speed"
+            - label: "Hybrid (grid allowed, with current limit)"
+              value: "hybrid"
+            - label: "Pure PV (solar only)"
+              value: "pure_pv"
+    hybrid_current:
+      name: "Hybrid Current Limit"
+      description: "Current limit in amps when DLB Mode is set to Hybrid (6–32A)."
+      required: false
+      example: 16
+      selector:
+        number:
+          min: 6
+          max: 32
+          step: 1
+          unit_of_measurement: "A"
+          mode: slider
+    extreme_mode:
+      name: "Extreme Mode"
+      description: >
+        When enabled, the charger reduces current as home load rises and stops
+        charging if grid headroom drops below ~10A.
+      required: false
+      selector:
+        boolean: {}
+    night_mode:
+      name: "Night Mode"
+      description: "Enable automatic full-speed charging during a configured nightly window."
+      required: false
+      selector:
+        boolean: {}
+    night_start:
+      name: "Night Mode Start Hour"
+      description: "Hour to begin Night Mode (0–23, 24h clock). Example: 22 = 10pm."
+      required: false
+      example: 22
+      selector:
+        number:
+          min: 0
+          max: 23
+          step: 1
+          mode: box
+    night_end:
+      name: "Night Mode End Hour"
+      description: "Hour to end Night Mode (0–23, 24h clock). Example: 6 = 6am."
+      required: false
+      example: 6
+      selector:
+        number:
+          min: 0
+          max: 23
+          step: 1
+          mode: box
