@@ -7,7 +7,7 @@ from homeassistant.const import UnitOfElectricCurrent
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CHARGER_TYPE, DLB, DOMAIN, DLB_MODE, MODEL, SERIAL
+from .const import CHARGER_TYPE, CONF_MAX_CURRENT_MAX, CONF_MAX_CURRENT_MIN, DEFAULT_MAX_CURRENT_MAX, DEFAULT_MAX_CURRENT_MIN, DLB, DOMAIN, DLB_MODE, MODEL, SERIAL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -18,6 +18,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     device_id = config_entry.data[SERIAL]
     device_model = config_entry.data[MODEL]
     dlb = config_entry.data[DLB]
+    max_current_min = config_entry.data.get(CONF_MAX_CURRENT_MIN, DEFAULT_MAX_CURRENT_MIN)
+    max_current_max = config_entry.data.get(CONF_MAX_CURRENT_MAX, DEFAULT_MAX_CURRENT_MAX)
 
     numbers = [
         BenyWifiMaxCurrentNumber(
@@ -25,6 +27,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             "max_current_control",
             device_id=device_id,
             device_model=device_model,
+            min_value=max_current_min,
+            max_value=max_current_max,
         )
     ]
 
@@ -63,7 +67,7 @@ class BenyWifiMaxCurrentNumber(CoordinatorEntity, NumberEntity):
 
     _attr_available = True
 
-    def __init__(self, coordinator, key, device_id=None, device_model=None):
+    def __init__(self, coordinator, key, device_id=None, device_model=None, min_value=DEFAULT_MAX_CURRENT_MIN, max_value=DEFAULT_MAX_CURRENT_MAX):
         """Initialize the number entity."""
         super().__init__(coordinator)
         self.coordinator = coordinator
@@ -72,8 +76,8 @@ class BenyWifiMaxCurrentNumber(CoordinatorEntity, NumberEntity):
         self._device_id = device_id
         self._device_model = device_model
         self._attr_has_entity_name = True
-        self._attr_native_min_value = 6
-        self._attr_native_max_value = 32
+        self._attr_native_min_value = min_value
+        self._attr_native_max_value = max_value
         self._attr_native_step = 1
         self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
         self._attr_mode = NumberMode.SLIDER

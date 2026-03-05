@@ -20,6 +20,12 @@ SCAN_INTERVAL: Final = "update_interval"
 DEFAULT_SCAN_INTERVAL: Final = 30
 DEFAULT_PORT = 3333 # default listening port (at least for "BCP-AT1N-L)
 
+# Configurable max-current slider bounds
+CONF_MAX_CURRENT_MIN: Final = "max_current_min"
+CONF_MAX_CURRENT_MAX: Final = "max_current_max"
+DEFAULT_MAX_CURRENT_MIN: Final = 6
+DEFAULT_MAX_CURRENT_MAX: Final = 32
+
 IP_ADDRESS = "ip_address"
 PORT = "port"
 CONF_SERIAL = "serial"

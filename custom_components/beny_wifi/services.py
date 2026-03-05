@@ -163,7 +163,6 @@ async def async_setup_services(hass: HomeAssistant) -> bool:
         "reset_timer":                      async_handle_reset_timer,
         "set_weekly_schedule":              async_handle_set_schedule,
         "set_max_current":                  async_handle_set_max_current,
-        "set_dlb_config":                   async_handle_set_dlb_config,
     }
 
     for _name, _service in standard_services.items():
@@ -176,6 +175,16 @@ async def async_setup_services(hass: HomeAssistant) -> bool:
         async_handle_request_weekly_schedule,
         supports_response=SupportsResponse.ONLY
     )
+
+    # Only register DLB service if at least one configured entry has DLB capability
+    from .const import DLB as DLB_KEY
+    has_dlb = any(
+        entry_data.get("coordinator").config_entry.data.get(DLB_KEY, False)
+        for entry_data in hass.data.get(DOMAIN, {}).values()
+        if isinstance(entry_data, dict) and "coordinator" in entry_data
+    )
+    if has_dlb and not hass.services.has_service(DOMAIN, "set_dlb_config"):
+        hass.services.async_register(DOMAIN, "set_dlb_config", async_handle_set_dlb_config)
 
 
 def _get_device_name(hass: HomeAssistant, device_id: str):
