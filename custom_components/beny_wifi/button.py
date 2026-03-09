@@ -101,10 +101,17 @@ class BenyWifiSendMaxCurrentButton(ButtonEntity):
         try:
             max_current = int(float(number_state.state))
             
-            # Validate range
-            if not (6 <= max_current <= 32):
+            # Validate range against the number entity's own min/max
+            number_entity = None
+            for domain_data in self.hass.data.get("beny_wifi", {}).values():
+                pass  # coordinator is in domain_data but we just use the state bounds below
+
+            min_val = int(float(number_state.attributes.get("min", 6)))
+            max_val = int(float(number_state.attributes.get("max", 32)))
+
+            if not (min_val <= max_current <= max_val):
                 _LOGGER.error(
-                    f"Max current value {max_current}A is out of range (6-32A)"
+                    f"Max current value {max_current}A is out of range ({min_val}-{max_val}A)"
                 )
                 return
             

@@ -168,6 +168,10 @@ def get_message_type(data: str) -> CLIENT_MESSAGE | SERVER_MESSAGE:
     if msg_int == 32:
         return SERVER_MESSAGE.SEND_MODEL
 
+    # DLB config ACK/response: message_type=6b (107), message_id=0x0012 (18)
+    if msg_int == 18 and int(data[4:6], 16) == 0x6b:
+        return SERVER_MESSAGE.SEND_DLB_CONFIG
+
     return None
 
 def get_ip(data: str) -> str:
@@ -222,4 +226,3 @@ def get_model(data: str) -> str:
 
     # Return ASCII string
     return bytes(model_bytes).decode('ascii')
-

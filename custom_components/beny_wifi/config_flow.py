@@ -12,8 +12,12 @@ from .communication import build_message, read_message
 from .const import (
     CHARGER_TYPE,
     CLIENT_MESSAGE,
+    CONF_MAX_CURRENT_MAX,
+    CONF_MAX_CURRENT_MIN,
     CONF_PIN,
     CONF_SERIAL,
+    DEFAULT_MAX_CURRENT_MAX,
+    DEFAULT_MAX_CURRENT_MIN,
     DEFAULT_PORT,
     DEFAULT_SCAN_INTERVAL,
     DLB,
@@ -35,7 +39,7 @@ _LOGGER = logging.getLogger(__name__)
 class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for beny-wifi."""
 
-    VERSION = 1
+    VERSION = 2
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
     def __init__(self):
@@ -82,7 +86,9 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         elif user_input[MODEL] in THREE_PHASE_CHARGERS:
                             user_input[CHARGER_TYPE] = '3P'
 
-                        if user_input[MODEL] in DLB_CHARGERS:
+                        # DLB is a separate physical module — only enable if the model
+                        # supports it AND the user confirmed they have the module installed.
+                        if user_input[MODEL] in DLB_CHARGERS and user_input.get(DLB, False):
                             user_input[DLB] = True
                         else:
                             user_input[DLB] = False
@@ -100,6 +106,9 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_SERIAL): str,
                     vol.Required(CONF_PIN): str,
                     vol.Optional(SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
+                    vol.Optional(CONF_MAX_CURRENT_MIN, default=DEFAULT_MAX_CURRENT_MIN): vol.All(int, vol.Range(min=6, max=32)),
+                    vol.Optional(CONF_MAX_CURRENT_MAX, default=DEFAULT_MAX_CURRENT_MAX): vol.All(int, vol.Range(min=6, max=32)),
+                    vol.Optional(DLB, default=False): bool,
                 }
             ),
             errors=self._errors
@@ -130,6 +139,11 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             user_input[CONF_PIN] = convert_pin_to_hex(user_input[CONF_PIN])
 
             if "base" not in self._errors or self._errors["base"] is None:
+                # Re-evaluate DLB: only allowed if model supports it AND user ticked the box
+                model = existing_data.get(MODEL, "")
+                if model not in DLB_CHARGERS:
+                    user_input[DLB] = False
+
                 return self.async_update_reload_and_abort(self._get_reconfigure_entry(), data_updates=user_input)
 
         return self.async_show_form(
@@ -141,6 +155,9 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_SERIAL, default=str(existing_data.get(CONF_SERIAL))): str,
                     vol.Required(CONF_PIN, default=str(int(existing_data.get(CONF_PIN), 16)).zfill(6)): str,
                     vol.Optional(SCAN_INTERVAL, default=int(existing_data.get(SCAN_INTERVAL))): int,
+                    vol.Optional(CONF_MAX_CURRENT_MIN, default=int(existing_data.get(CONF_MAX_CURRENT_MIN, DEFAULT_MAX_CURRENT_MIN))): vol.All(int, vol.Range(min=6, max=32)),
+                    vol.Optional(CONF_MAX_CURRENT_MAX, default=int(existing_data.get(CONF_MAX_CURRENT_MAX, DEFAULT_MAX_CURRENT_MAX))): vol.All(int, vol.Range(min=6, max=32)),
+                    vol.Optional(DLB, default=bool(existing_data.get(DLB, False))): bool,
                 }
             ),
             errors=self._errors

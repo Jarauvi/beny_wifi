@@ -5,8 +5,8 @@ from typing import Final
 
 from homeassistant.const import Platform
 
-# Updated to include NUMBER and BUTTON platforms
-PLATFORMS: Final = [Platform.SENSOR, Platform.NUMBER, Platform.BUTTON]
+# Updated to include NUMBER, BUTTON, SELECT and SWITCH platforms
+PLATFORMS: Final = [Platform.SENSOR, Platform.NUMBER, Platform.BUTTON, Platform.SELECT, Platform.SWITCH]
 
 NAME: Final = "Beny Wifi"
 DOMAIN: Final = "beny_wifi"
@@ -18,7 +18,13 @@ DLB = "dlb"
 SCAN_INTERVAL: Final = "update_interval"
 
 DEFAULT_SCAN_INTERVAL: Final = 30
-DEFAULT_PORT = 3333 # default listening port (at least for"BCP-AT1N-L)
+DEFAULT_PORT = 3333 # default listening port (at least for "BCP-AT1N-L)
+
+# Configurable max-current slider bounds
+CONF_MAX_CURRENT_MIN: Final = "max_current_min"
+CONF_MAX_CURRENT_MAX: Final = "max_current_max"
+DEFAULT_MAX_CURRENT_MIN: Final = 6
+DEFAULT_MAX_CURRENT_MAX: Final = 32
 
 IP_ADDRESS = "ip_address"
 PORT = "port"
@@ -232,6 +238,27 @@ class REQUEST_TYPE(Enum):
     DLB = 123
     MODEL = 4
 
+class DLB_MODE(Enum):
+    """DLB operating modes.
+
+    Encoded in byte12 of the SET_DLB_CONFIG message.
+    Hybrid mode uses the actual current limit (6-32) as the byte value.
+    Sentinel values for non-hybrid modes fall outside the 6-32A range.
+    """
+
+    PURE_PV    = 0x00   # Solar only, no grid draw
+    HYBRID     = -1     # Variable: byte12 = current limit (6-32A). Use set_dlb_config(hybrid_current=N)
+    FULL_SPEED = 0x63   # No grid limiting (99 decimal — out of range sentinel)
+    DLB_BOX    = 0xff   # DLB hardware box controls current (255 decimal — out of range sentinel)
+
+# Human-readable labels for the select entity
+DLB_MODE_OPTIONS = {
+    "pure_pv":    DLB_MODE.PURE_PV,
+    "hybrid":     DLB_MODE.HYBRID,
+    "full_speed": DLB_MODE.FULL_SPEED,
+    "dlb_box":    DLB_MODE.DLB_BOX,
+}
+
 class COMMON(Enum):
     """Common mapping for fixed message contents."""
 
@@ -333,13 +360,27 @@ class CLIENT_MESSAGE(Enum):
             "maximum_consumption": slice(20, 22)
         }
     }
-
-    # ADDED FROM v0.8.1
     SET_MAX_CURRENT = {
         "description": "Send setting values to charger",
         "hex": "55aa10000d000[pin]6d00[max_current][checksum]",
         "structure": {
             "pin": slice(13,18)
+        }
+    }
+    SET_DLB_CONFIG = {
+        "description": "Set DLB operating mode, extreme mode, and night mode config. "
+                       "All fields must be sent together — the charger replaces the full config. "
+                       "Reverse-engineered from Z-Box app UDP traffic. "
+                       "byte11=extreme(01/00), byte12=dlb_mode(00=PV,0x63=FullSpeed,0xff=DLB,6-32=Hybrid), "
+                       "byte13=night(01/00), byte14=night_start_hour, byte15=night_end_hour.",
+        "hex": "55aa6b0012000[pin]6b01[extreme][dlb_mode][night][night_start][night_end]3f[checksum]",
+        "structure": {
+            "pin":         slice(10, 20),
+            "extreme":     slice(22, 24),
+            "dlb_mode":    slice(24, 26),
+            "night":       slice(26, 28),
+            "night_start": slice(28, 30),
+            "night_end":   slice(30, 32),
         }
     }
 
@@ -405,7 +446,6 @@ class SERVER_MESSAGE(Enum):
         }
     }
     SEND_DLB = {
-        # ORIGINAL v0.7.0 - UNCHANGED
         "description": "Receive dlb values",
         "structure": {
             "request_type": slice(10, 12),
@@ -419,7 +459,6 @@ class SERVER_MESSAGE(Enum):
         "description": "Access denied message",
         "structure": {}
     }
-
     SEND_SETTINGS = {
         "description": "Receive settings from charger",
         "structure": {
@@ -428,6 +467,17 @@ class SERVER_MESSAGE(Enum):
             "timer_start_min": slice(34, 36),
             "timer_end_h": slice(36, 38),
             "timer_end_min": slice(38, 40),
-
+        }
+    }
+    SEND_DLB_CONFIG = {
+        "description": "Receive current DLB config from charger (ACK to SET_DLB_CONFIG or "
+                       "response to GET_DLB_CONFIG). Same byte layout as the SET command. "
+                       "Identified by message_type=6b (107) and message_id=0x0012 (18).",
+        "structure": {
+            "extreme":     slice(22, 24),
+            "dlb_mode":    slice(24, 26),
+            "night":       slice(26, 28),
+            "night_start": slice(28, 30),
+            "night_end":   slice(30, 32),
         }
     }
