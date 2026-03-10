@@ -54,5 +54,17 @@
       "no_response_timeout": "No response from the device. Check serial and pin code",
       "cannot_resolve_ip": "Device IP cannot be resolved by serial. You can try to set it manually"
     }
+  },
+  "entity": {
+    "switch": {
+      "anti_overload": {
+        "name": "Anti Overload"
+      }
+    },
+    "number": {
+      "anti_overload_value": {
+        "name": "Anti Overload Threshold"
+      }
+    }
   }
 }

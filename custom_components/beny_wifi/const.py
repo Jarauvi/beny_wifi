@@ -372,15 +372,17 @@ class CLIENT_MESSAGE(Enum):
                        "All fields must be sent together — the charger replaces the full config. "
                        "Reverse-engineered from Z-Box app UDP traffic. "
                        "byte11=extreme(01/00), byte12=dlb_mode(00=PV,0x63=FullSpeed,0xff=DLB,6-32=Hybrid), "
-                       "byte13=night(01/00), byte14=night_start_hour, byte15=night_end_hour.",
-        "hex": "55aa6b0012000[pin]6b01[extreme][dlb_mode][night][night_start][night_end]3f[checksum]",
+                       "byte13=night(01/00), byte14=night_start_hour, byte15=night_end_hour, "
+                       "byte16=anti_overload(default 0x3f=63, but user-configurable in Z-Box app).",
+        "hex": "55aa6b0012000[pin]6b01[extreme][dlb_mode][night][night_start][night_end][anti_overload][checksum]",
         "structure": {
-            "pin":         slice(10, 20),
-            "extreme":     slice(22, 24),
-            "dlb_mode":    slice(24, 26),
-            "night":       slice(26, 28),
-            "night_start": slice(28, 30),
-            "night_end":   slice(30, 32),
+            "pin":          slice(10, 20),
+            "extreme":      slice(22, 24),
+            "dlb_mode":     slice(24, 26),
+            "night":        slice(26, 28),
+            "night_start":  slice(28, 30),
+            "night_end":    slice(30, 32),
+            "anti_overload": slice(32, 34),
         }
     }
 
@@ -474,10 +476,11 @@ class SERVER_MESSAGE(Enum):
                        "response to GET_DLB_CONFIG). Same byte layout as the SET command. "
                        "Identified by message_type=6b (107) and message_id=0x0012 (18).",
         "structure": {
-            "extreme":     slice(22, 24),
-            "dlb_mode":    slice(24, 26),
-            "night":       slice(26, 28),
-            "night_start": slice(28, 30),
-            "night_end":   slice(30, 32),
+            "extreme":      slice(22, 24),
+            "dlb_mode":     slice(24, 26),
+            "night":        slice(26, 28),
+            "night_start":  slice(28, 30),
+            "night_end":    slice(30, 32),
+            "anti_overload": slice(32, 34),
         }
     }
