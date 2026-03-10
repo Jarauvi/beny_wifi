@@ -84,6 +84,9 @@
         },
         "night_end_hour": {
           "name": "Yötilan lopetustunti"
+        },
+        "anti_overload_value": {
+          "name": "Ylikuormitussuojan kynnysarvo"
         }
       },
       "button": {
@@ -114,6 +117,9 @@
         },
         "night_mode": {
           "name": "Yötila"
+        },
+        "anti_overload": {
+          "name": "Ylikuormitussuoja"
         }
       }
     },
@@ -359,6 +365,14 @@
           "night_end": {
             "name": "Yötilan lopetustunti",
             "description": "Tunti, jolloin yötila päättyy (0–23, 24h-kello)"
+          },
+          "anti_overload": {
+            "name": "Ylikuormitussuoja",
+            "description": "Ota ylikuormitussuoja käyttöön tai poista se käytöstä"
+          },
+          "anti_overload_value": {
+            "name": "Ylikuormitussuojan kynnysarvo",
+            "description": "Kynnysarvo (1–99), jota käytetään ylikuormitussuojan ollessa käytössä (oletus 63)"
           }
         }
       }
