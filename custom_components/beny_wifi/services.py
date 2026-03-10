@@ -150,6 +150,8 @@ async def async_setup_services(hass: HomeAssistant) -> bool:
             night_mode=call.data.get("night_mode", None),
             night_start=call.data.get("night_start", None),
             night_end=call.data.get("night_end", None),
+            anti_overload=call.data.get("anti_overload", None),
+            anti_overload_value=call.data.get("anti_overload_value", None),
         )
 
     # --- Register all services ---

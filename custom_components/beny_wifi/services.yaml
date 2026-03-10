@@ -237,3 +237,20 @@ set_dlb_config:
           max: 23
           step: 1
           mode: box
+    anti_overload:
+      name: "Anti Overload"
+      description: "Enable or disable Anti Overload Mode."
+      required: false
+      selector:
+        boolean: {}
+    anti_overload_value:
+      name: "Anti Overload Threshold"
+      description: "Threshold value (1–99) used when Anti Overload is enabled. Default is 63."
+      required: false
+      example: 63
+      selector:
+        number:
+          min: 1
+          max: 99
+          step: 1
+          mode: slider

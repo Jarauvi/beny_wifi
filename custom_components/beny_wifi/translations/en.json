@@ -84,6 +84,9 @@
         },
         "night_end_hour": {
           "name": "Night Mode End Hour"
+        },
+        "anti_overload_value": {
+          "name": "Anti Overload Threshold"
         }
       },
       "button": {
@@ -114,6 +117,9 @@
         },
         "night_mode": {
           "name": "Night Mode"
+        },
+        "anti_overload": {
+          "name": "Anti Overload"
         }
       }
     },
@@ -359,6 +365,14 @@
           "night_end": {
             "name": "Night mode end hour",
             "description": "Hour to end Night Mode (0–23, 24h clock)"
+          },
+          "anti_overload": {
+            "name": "Anti Overload",
+            "description": "Enable or disable Anti Overload Mode"
+          },
+          "anti_overload_value": {
+            "name": "Anti Overload threshold",
+            "description": "Threshold value (1–99) used when Anti Overload is enabled (default 63)"
           }
         }
       }

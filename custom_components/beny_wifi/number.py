@@ -46,6 +46,10 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                 coordinator, "night_end_hour",
                 device_id=device_id, device_model=device_model,
             ),
+            BenyWifiAntiOverloadValueNumber(
+                coordinator, "anti_overload_value",
+                device_id=device_id, device_model=device_model,
+            ),
         ])
 
     async_add_entities(numbers, update_before_add=True)
@@ -270,6 +274,57 @@ class BenyWifiNightEndNumber(CoordinatorEntity, NumberEntity):
         device_name = f"Beny Charger {self._device_id}"
         await self.coordinator.async_set_dlb_config(device_name, night_end=hour)
         _LOGGER.info(f"{device_name}: Night Mode end hour set to {hour:02d}:00")
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return _device_info(self._device_id, self._device_model)
+
+class BenyWifiAntiOverloadValueNumber(CoordinatorEntity, NumberEntity):
+    """Threshold value for Anti Overload Mode (1–99).
+
+    This sets the grid-draw limit used when Anti Overload is enabled.
+    Adjusting it while Anti Overload is ON immediately resends the config.
+    Adjusting it while OFF stores the value ready for the next enable.
+    """
+
+    def __init__(self, coordinator, key, device_id=None, device_model=None):
+        """Initialize."""
+        super().__init__(coordinator)
+        self.coordinator = coordinator
+        self.key = key
+        self._attr_translation_key = key
+        self._device_id = device_id
+        self._device_model = device_model
+        self._attr_has_entity_name = True
+        self._attr_icon = "mdi:transmission-tower-off"
+        self._attr_native_min_value = 1
+        self._attr_native_max_value = 99
+        self._attr_native_step = 1
+        self._attr_mode = NumberMode.BOX
+        self.entity_id = f"number.{device_id}_{key}"
+
+    @property
+    def unique_id(self) -> str:
+        """Return unique ID."""
+        return f"{self._device_id}_{self.key}"
+
+    @property
+    def native_value(self) -> float:
+        """Return the stored threshold value (always the non-zero value, even when disabled)."""
+        return float(self.coordinator._dlb_config.get("anti_overload_value", 0x3f))
+
+    async def async_set_native_value(self, value: float) -> None:
+        """Update Anti Overload threshold; resend to charger if currently enabled."""
+        threshold = int(value)
+        device_name = f"Beny Charger {self._device_id}"
+        await self.coordinator.async_set_dlb_config(
+            device_name, anti_overload_value=threshold
+        )
+        _LOGGER.info(
+            f"{device_name}: Anti Overload threshold set to {threshold}"
+            + (" (sent to charger)" if self.coordinator._dlb_config.get("anti_overload", 0) != 0 else " (stored, applies on next enable)")
+        )
 
     @property
     def device_info(self) -> DeviceInfo:

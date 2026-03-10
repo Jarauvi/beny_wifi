@@ -66,6 +66,8 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "night_start":    persisted.get("night_start",    DEFAULT_NIGHT_START),
             "night_end":      persisted.get("night_end",      DEFAULT_NIGHT_END),
             "hybrid_current": persisted.get("hybrid_current", 16),
+            "anti_overload":  persisted.get("anti_overload",  0x3f),   # 0x00=off, 1-99=on with that threshold value
+            "anti_overload_value": persisted.get("anti_overload_value", 0x3f),  # last non-zero threshold, used on re-enable
         }
         if persisted:
             _LOGGER.debug(f"DLB config restored from config_entry.options: {self._dlb_config}")  # noqa: G004
@@ -387,6 +389,8 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         night_mode: bool | None = None,
         night_start: int | None = None,
         night_end: int | None = None,
+        anti_overload: bool | None = None,
+        anti_overload_value: int | None = None,
     ) -> None:
         """Send full DLB config to charger.
 
@@ -394,13 +398,15 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         from the local cache so we never accidentally reset a field.
 
         Args:
-            device_name:    Human-readable device label for logging.
-            dlb_mode:       DLB_MODE enum value. For HYBRID, also supply hybrid_current.
-            hybrid_current: Current limit in amps (6-32) when dlb_mode=HYBRID.
-            extreme_mode:   True to enable Extreme Mode, False to disable.
-            night_mode:     True to enable Night Mode, False to disable.
-            night_start:    Night mode start hour (0-23, 24h).
-            night_end:      Night mode end hour (0-23, 24h).
+            device_name:         Human-readable device label for logging.
+            dlb_mode:            DLB_MODE enum value. For HYBRID, also supply hybrid_current.
+            hybrid_current:      Current limit in amps (6-32) when dlb_mode=HYBRID.
+            extreme_mode:        True to enable Extreme Mode, False to disable.
+            night_mode:          True to enable Night Mode, False to disable.
+            night_start:         Night mode start hour (0-23, 24h).
+            night_end:           Night mode end hour (0-23, 24h).
+            anti_overload:       True to enable Anti Overload, False to disable (sets byte to 0x00).
+            anti_overload_value: Threshold value (1-99) used when Anti Overload is enabled.
         """
         cfg = self._dlb_config
 
@@ -432,6 +438,24 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             else:
                 cfg["dlb_mode"] = dlb_mode.value
 
+        # Anti Overload: 0x00 = off, 1-99 = on with that threshold value.
+        # Updating the value alone (without toggling) stores it ready for next enable.
+        # Toggling on uses the stored value; toggling off sends 0x00.
+        if anti_overload_value is not None:
+            if not (1 <= anti_overload_value <= 99):
+                raise ValueError("anti_overload_value must be between 1 and 99")
+            cfg["anti_overload_value"] = anti_overload_value
+            # If currently enabled, also update the live byte immediately
+            if cfg["anti_overload"] != 0x00:
+                cfg["anti_overload"] = anti_overload_value
+
+        if anti_overload is not None:
+            if anti_overload:
+                # Enable: use the stored threshold value (default 63)
+                cfg["anti_overload"] = cfg.get("anti_overload_value", 0x3f)
+            else:
+                cfg["anti_overload"] = 0x00
+
         # Determine byte12 to send
         dlb_mode_byte = cfg["dlb_mode"]
         # If dlb_mode is stored as an int (hybrid current), use it directly
@@ -442,12 +466,13 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         request = build_message(
             CLIENT_MESSAGE.SET_DLB_CONFIG,
             {
-                "pin":         self.config_entry.data[CONF_PIN],
-                "extreme":     format(cfg["extreme"],     "02x"),
-                "dlb_mode":    format(dlb_mode_byte,      "02x"),
-                "night":       format(cfg["night"],        "02x"),
-                "night_start": format(cfg["night_start"],  "02x"),
-                "night_end":   format(cfg["night_end"],    "02x"),
+                "pin":          self.config_entry.data[CONF_PIN],
+                "extreme":      format(cfg["extreme"],        "02x"),
+                "dlb_mode":     format(dlb_mode_byte,         "02x"),
+                "night":        format(cfg["night"],           "02x"),
+                "night_start":  format(cfg["night_start"],     "02x"),
+                "night_end":    format(cfg["night_end"],       "02x"),
+                "anti_overload": format(cfg["anti_overload"],  "02x"),
             },
         ).encode("ascii")
 
@@ -455,10 +480,16 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         response = await loop.run_in_executor(None, self._send_udp_request, request)
 
         # Parse the ACK — the charger echoes back the full config it applied.
-        # This confirms what was stored and keeps _dlb_config in sync.
+        # This confirms what was stored and keeps _dlb_config in sync,
+        # including the anti_overload byte which the user may have set via the Z-Box app.
         try:
             ack = read_message(response.decode("ascii"))
             if ack and ack.get("message_type") == str(SERVER_MESSAGE.SEND_DLB_CONFIG):
+                if "anti_overload" in ack:
+                    cfg["anti_overload"] = ack["anti_overload"]
+                    # If non-zero, also update the stored threshold so re-enable restores it
+                    if ack["anti_overload"] != 0x00:
+                        cfg["anti_overload_value"] = ack["anti_overload"]
                 _LOGGER.debug(f"SET_DLB_CONFIG ACK confirmed by charger: {ack}")  # noqa: G004
         except Exception as ack_err:
             _LOGGER.debug(f"Could not parse SET_DLB_CONFIG ACK (non-fatal): {ack_err}")  # noqa: G004
