@@ -11,20 +11,12 @@
     <img alt="Version" src="https://img.shields.io/github/manifest-json/v/Jarauvi/beny_wifi?filename=custom_components%2Fbeny_wifi%2Fmanifest.json&label=Version">
 </div>
 
-*Hi everyone, I wanted to apologize for the lack of updates over the last year. Personal circumstances required my full attention, and unfortunately, this project had to take a backseat.*
 
-*I will try my best to address the issues, but PRs are still accepted and very much appreciated!*
-
-⚠️*DISCLAIMER: I DO NOT TAKE ANY RESPONSIBILITY OF DAMAGED OR DESTROYED PROPERTY, INJURIES OR HUMAN CASUALTIES. USE AT YOUR OWN RISK*
-
-> [!IMPORTANT]
+> ⚠️ *IMPORTANT*
 >
-> `grid_import` and `grid_export` have been replaced by `grid_power`.
-> 
-> Any automations, scripts, or templates that referenced the old sensors must be updated to use `grid_power` instead.
->
-> **Note:**  
-> Positive values represent **import**, and negative values represent **export**.
+> *Since version 0.8.5 integration needs user to input main fuse with DLB modes. Be sure to set correct value for your system*
+
+*DISCLAIMER: I DO NOT TAKE ANY RESPONSIBILITY OF DAMAGED OR DESTROYED PROPERTY, INJURIES OR HUMAN CASUALTIES. USE AT YOUR OWN RISK*
 
 <div align="left">
     <img alt="Sensors" height="256px" src="https://github.com/Jarauvi/beny-wifi/blob/main/images/sensors.png?raw=true">
