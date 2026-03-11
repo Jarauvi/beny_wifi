@@ -112,6 +112,9 @@
         }
       },
       "switch": {
+        "dlb_enabled": {
+          "name": "PV dynaaminen kuormantasaus"
+        },
         "extreme_mode": {
           "name": "Äärimmäinen tila"
         },
@@ -341,6 +344,10 @@
           "device_id": {
             "name": "Latausasema",
             "description": "Kohteena toimiva latausasema"
+          },
+          "dlb_enabled": {
+            "name": "PV dynaaminen kuormantasaus",
+            "description": "Pääkytkin koko DLB-toiminnolle. Vastaa Z-Box-sovelluksen 'PV Dynamic Load Balance' -kytkintä."
           },
           "dlb_mode": {
             "name": "DLB-tila",

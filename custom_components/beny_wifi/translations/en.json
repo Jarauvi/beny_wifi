@@ -112,6 +112,9 @@
         }
       },
       "switch": {
+        "dlb_enabled": {
+          "name": "PV Dynamic Load Balance"
+        },
         "extreme_mode": {
           "name": "Extreme Mode"
         },
@@ -341,6 +344,10 @@
           "device_id": {
             "name": "Charger",
             "description": "Target charger"
+          },
+          "dlb_enabled": {
+            "name": "PV Dynamic Load Balance",
+            "description": "Master toggle for the entire DLB feature. Mirrors the 'PV Dynamic Load Balance' switch in the Z-Box app."
           },
           "dlb_mode": {
             "name": "DLB mode",
