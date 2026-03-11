@@ -57,6 +57,9 @@
   },
   "entity": {
     "switch": {
+      "dlb_enabled": {
+        "name": "PV Dynamic Load Balance"
+      },
       "anti_overload": {
         "name": "Anti Overload"
       }

@@ -22,6 +22,12 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     if dlb:
         entities.extend([
+            BenyWifiDlbEnabledSwitch(
+                coordinator,
+                "dlb_enabled",
+                device_id=device_id,
+                device_model=device_model,
+            ),
             BenyWifiExtremeModeSwitch(
                 coordinator,
                 "extreme_mode",
@@ -82,6 +88,48 @@ class BenyWifiDlbSwitch(CoordinatorEntity, SwitchEntity):
             model=self._device_model,
             serial_number=self._device_id,
         )
+
+
+class BenyWifiDlbEnabledSwitch(BenyWifiDlbSwitch):
+    """Master switch for PV Dynamic Load Balance.
+
+    Toggling this OFF sends dlb_enabled=0x00 with all other fields preserved,
+    mirroring the 'PV Dynamic Load Balance' toggle in the Z-Box app.
+    Confirmed via packet capture: byte[10] of SET_DLB_CONFIG flips 0x01↔0x00.
+    """
+
+    def __init__(self, coordinator, key, device_id=None, device_model=None):
+        """Initialize."""
+        super().__init__(coordinator, key, device_id, device_model)
+        self._attr_icon = "mdi:solar-power"
+
+    @property
+    def is_on(self) -> bool:
+        """Return True if DLB is enabled."""
+        if self._optimistic_state is not None:
+            return self._optimistic_state
+        return self.coordinator._dlb_config.get("dlb_enabled", 0x01) == 0x01
+
+    async def async_turn_on(self, **kwargs) -> None:
+        """Enable PV Dynamic Load Balance."""
+        device_name = f"Beny Charger {self._device_id}"
+        await self.coordinator.async_set_dlb_config(device_name, dlb_enabled=True)
+        self._optimistic_state = True
+        self.async_write_ha_state()
+        _LOGGER.info(f"{device_name}: PV Dynamic Load Balance enabled")
+
+    async def async_turn_off(self, **kwargs) -> None:
+        """Disable PV Dynamic Load Balance."""
+        device_name = f"Beny Charger {self._device_id}"
+        await self.coordinator.async_set_dlb_config(device_name, dlb_enabled=False)
+        self._optimistic_state = False
+        self.async_write_ha_state()
+        _LOGGER.info(f"{device_name}: PV Dynamic Load Balance disabled")
+
+    def _handle_coordinator_update(self) -> None:
+        """Clear optimistic state on coordinator refresh."""
+        self._optimistic_state = None
+        super()._handle_coordinator_update()
 
 
 class BenyWifiExtremeModeSwitch(BenyWifiDlbSwitch):
