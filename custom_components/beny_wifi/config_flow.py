@@ -6,6 +6,7 @@ import socket
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.core import callback
 from homeassistant.helpers.device_registry import async_get as async_get_device_registry
 
 from .communication import build_message, read_message
@@ -38,6 +39,12 @@ _LOGGER = logging.getLogger(__name__)
 
 class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for beny-wifi."""
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        """Get the options flow for this handler."""
+        return BenyWifiOptionsFlow()
 
     VERSION = 2
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
@@ -264,3 +271,84 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._errors["base"] = "cannot_communicate"
             _LOGGER.exception(f"Exception receiving model data from {ip}:{port}. Cause: {ex}. Request hex: {request}. Response hex: {response}. Translated response: {data}")  # noqa: G004, TRY401
             return None
+        
+class BenyWifiOptionsFlow(config_entries.OptionsFlow):
+    """Handle options flow for integration."""
+
+    async def async_step_init(self, user_input=None):
+        """Manage the options."""
+    
+        existing_data = self.config_entry.data
+        existing_options = self.config_entry.options
+
+        self._errors = {}
+        
+        if user_input is not None:
+
+            if not user_input[CONF_PIN].isdigit():
+                self._errors["base"] = "pin_not_numeric"
+
+            if len(user_input[CONF_PIN]) != 6:
+                self._errors["base"] = "pin_length_invalid"
+
+            user_input[CONF_PIN] = convert_pin_to_hex(user_input[CONF_PIN])
+            
+            if "base" not in self._errors or self._errors["base"] is None:
+                # Re-evaluate DLB: only allowed if model supports it AND user ticked the box
+                model = existing_data.get(MODEL, "")
+                if model not in DLB_CHARGERS:
+                    user_input[DLB] = False
+
+                return self.async_create_entry(title="", data=user_input)
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        PORT,
+                        default=existing_options.get(PORT, existing_data.get(PORT)),
+                    ): int,
+
+                    vol.Optional(
+                        IP_ADDRESS,
+                        default=existing_options.get(IP_ADDRESS, existing_data.get(IP_ADDRESS)),
+                    ): str,
+
+                    vol.Required(
+                        CONF_PIN,
+                        default=str(int(existing_data.get(CONF_PIN), 16)).zfill(6),
+                    ): str,
+
+                    vol.Optional(
+                        SCAN_INTERVAL,
+                        default=existing_options.get(
+                            SCAN_INTERVAL, existing_data.get(SCAN_INTERVAL)
+                        ),
+                    ): int,
+
+                    vol.Optional(
+                        CONF_MAX_CURRENT_MIN,
+                        default=existing_options.get(
+                            CONF_MAX_CURRENT_MIN,
+                            existing_data.get(CONF_MAX_CURRENT_MIN, DEFAULT_MAX_CURRENT_MIN),
+                        ),
+                    ): vol.All(int, vol.Range(min=6, max=32)),
+
+                    vol.Optional(
+                        CONF_MAX_CURRENT_MAX,
+                        default=existing_options.get(
+                            CONF_MAX_CURRENT_MAX,
+                            existing_data.get(CONF_MAX_CURRENT_MAX, DEFAULT_MAX_CURRENT_MAX),
+                        ),
+                    ): vol.All(int, vol.Range(min=6, max=32)),
+
+                    vol.Optional(
+                        DLB,
+                        default=existing_options.get(
+                            DLB, existing_data.get(DLB, False)
+                        ),
+                    ): bool,
+                }
+            ),
+        )

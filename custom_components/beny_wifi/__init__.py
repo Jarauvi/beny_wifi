@@ -13,10 +13,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Beny Wifi from a config entry."""
     _LOGGER.info("Setting up Beny WiFi integration")
     
-    ip_address = entry.data[IP_ADDRESS]
-    port = entry.data[PORT]
+    ip_address = entry.options.get(IP_ADDRESS, entry.data.get(IP_ADDRESS))
+    port = entry.options.get(PORT, entry.data.get(PORT))
     # Use DEFAULT_SCAN_INTERVAL (30 seconds) if not configured
-    scan_interval = entry.data.get(SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+    scan_interval = entry.options.get(SCAN_INTERVAL, entry.data.get(SCAN_INTERVAL))
     _LOGGER.info(f"Using scan interval: {scan_interval} seconds")
     
     # FIXED: Pass entry as the second parameter

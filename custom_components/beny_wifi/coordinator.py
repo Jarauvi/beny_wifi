@@ -120,7 +120,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         # On the first successful fetch, attempt to read DLB config directly from
         # the charger so entities reflect actual state rather than defaults/persisted cache.
-        if self.config_entry.data.get(DLB) and not self._dlb_config_loaded:
+        if self.config_entry.options.get(DLB, self.config_entry.data.get(DLB)) and not self._dlb_config_loaded:
             self._dlb_config_loaded = await self.async_read_dlb_config()
 
         try:
@@ -136,6 +136,11 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             # Decode and parse the response
             response = response.decode('ascii')
+            
+            # Authentication failed
+            if "55aa100008" in response:
+                raise Exception("Authentication failed, check PIN")
+        
             data = read_message(response)
 
             if data is None:

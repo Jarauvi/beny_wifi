@@ -17,10 +17,16 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
     device_id = config_entry.data[SERIAL]
     device_model = config_entry.data[MODEL]
-    dlb = config_entry.data[DLB]
-    max_current_min = config_entry.data.get(CONF_MAX_CURRENT_MIN, DEFAULT_MAX_CURRENT_MIN)
-    max_current_max = config_entry.data.get(CONF_MAX_CURRENT_MAX, DEFAULT_MAX_CURRENT_MAX)
+    dlb = config_entry.options.get(DLB, config_entry.data.get(DLB))
+    max_current_min = config_entry.options.get(
+        CONF_MAX_CURRENT_MIN,
+        config_entry.data.get(CONF_MAX_CURRENT_MIN, DEFAULT_MAX_CURRENT_MIN),
+    )
 
+    max_current_max = config_entry.options.get(
+        CONF_MAX_CURRENT_MAX,
+        config_entry.data.get(CONF_MAX_CURRENT_MAX, DEFAULT_MAX_CURRENT_MAX),
+    )
     numbers = [
         BenyWifiMaxCurrentNumber(
             coordinator,

@@ -21,7 +21,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
     device_id = config_entry.data[SERIAL]
     device_model = config_entry.data[MODEL]
-    dlb = config_entry.data[DLB]
+    dlb = config_entry.options.get(DLB, config_entry.data.get(DLB))
 
     entities = []
 
