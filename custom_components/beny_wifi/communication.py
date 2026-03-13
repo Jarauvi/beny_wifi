@@ -105,6 +105,44 @@ def read_message(data, msg_type:str | None = None) -> dict:  # noqa: C901
                 _LOGGER.error(f"Invalid value for {param}: value")  # noqa: G004
                 msg[param] = None
 
+    if msg_type == SERVER_MESSAGE.SEND_DLB_3P:
+        # 3-phase DLB packet (msg_len=0x21, 33 bytes, msg_int=33).
+        # Each power field has three 16-bit per-phase values; totals are the sum of all phases.
+        # Grid phases are signed 16-bit two's complement (negative = exporting to grid).
+        # If any phase of solar/ev/house hits the 0xFF00+ sentinel, the whole field becomes None
+        # so the coordinator retains the last valid reading rather than producing a bogus total.
+        # Reverse-engineered from BCP-AT1N-L capture vs Z-Box ground truth (÷100 gives kW totals).
+        _FIELD_MAP_3P = {
+            "solar_phase1": "solar_power", "solar_phase2": "solar_power", "solar_phase3": "solar_power",
+            "ev_phase1":    "ev_power",    "ev_phase2":    "ev_power",    "ev_phase3":    "ev_power",
+            "house_phase1": "house_power", "house_phase2": "house_power", "house_phase3": "house_power",
+            "grid_phase1":  "grid_power",  "grid_phase2":  "grid_power",  "grid_phase3":  "grid_power",
+        }
+        phase_sums: dict = {"solar_power": 0.0, "ev_power": 0.0, "house_power": 0.0, "grid_power": 0.0}
+        sentinel_fields: set = set()
+
+        for param, pos in msg_type.value["structure"].items():
+            value = int(data[pos], 16)
+            target = _FIELD_MAP_3P[param]
+            if target == "grid_power":
+                # All three grid phases are signed 16-bit two's complement
+                if value >= 0x8000:
+                    value = value - 0x10000
+                phase_sums[target] += float(value) / _DLB_POWER_DIVISOR
+            else:
+                # Solar, EV, house: unsigned. A sentinel on any single phase
+                # marks the whole field unavailable for this cycle.
+                if value >= _DLB_SENTINEL_THRESHOLD:
+                    _LOGGER.debug(  # noqa: G004
+                        f"3P DLB sentinel on {param}: {value:#06x} — marking {target} as unavailable"
+                    )
+                    sentinel_fields.add(target)
+                elif target not in sentinel_fields:
+                    phase_sums[target] += float(value) / _DLB_POWER_DIVISOR
+
+        for field, total in phase_sums.items():
+            msg[field] = None if field in sentinel_fields else round(total, 2)
+
     # charger ACKs SET_DLB_CONFIG or responds to GET_DLB_CONFIG with current config state
     if msg_type == SERVER_MESSAGE.SEND_DLB_CONFIG:
         for param, pos in msg_type.value["structure"].items():
