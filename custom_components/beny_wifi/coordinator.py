@@ -60,6 +60,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Restored from config_entry.options if previously persisted, otherwise defaults.
         persisted = config_entry.options.get("dlb_config", {})
         self._dlb_config: dict = {
+            "dlb_enabled":    persisted.get("dlb_enabled",    0x01),   # default: enabled
             "extreme":        persisted.get("extreme",        0x00),
             "dlb_mode":       persisted.get("dlb_mode",       0xff),   # default: DLB Box
             "night":          persisted.get("night",          0x00),
@@ -383,6 +384,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self,
         device_name: str,
         *,
+        dlb_enabled: bool | None = None,
         dlb_mode: DLB_MODE | None = None,
         hybrid_current: int | None = None,
         extreme_mode: bool | None = None,
@@ -399,6 +401,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         Args:
             device_name:         Human-readable device label for logging.
+            dlb_enabled:         True to enable PV Dynamic Load Balance, False to disable.
             dlb_mode:            DLB_MODE enum value. For HYBRID, also supply hybrid_current.
             hybrid_current:      Current limit in amps (6-32) when dlb_mode=HYBRID.
             extreme_mode:        True to enable Extreme Mode, False to disable.
@@ -411,7 +414,8 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         cfg = self._dlb_config
 
         # Apply any supplied overrides
-        if extreme_mode is not None:
+        if dlb_enabled is not None:
+            cfg["dlb_enabled"] = 0x01 if dlb_enabled else 0x00
             cfg["extreme"] = 0x01 if extreme_mode else 0x00
 
         if night_mode is not None:
@@ -467,6 +471,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             CLIENT_MESSAGE.SET_DLB_CONFIG,
             {
                 "pin":          self.config_entry.data[CONF_PIN],
+                "dlb_enabled":  format(cfg["dlb_enabled"],    "02x"),
                 "extreme":      format(cfg["extreme"],        "02x"),
                 "dlb_mode":     format(dlb_mode_byte,         "02x"),
                 "night":        format(cfg["night"],           "02x"),
@@ -485,6 +490,8 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         try:
             ack = read_message(response.decode("ascii"))
             if ack and ack.get("message_type") == str(SERVER_MESSAGE.SEND_DLB_CONFIG):
+                if "dlb_enabled" in ack:
+                    cfg["dlb_enabled"] = ack["dlb_enabled"]
                 if "anti_overload" in ack:
                     cfg["anti_overload"] = ack["anti_overload"]
                     # If non-zero, also update the stored threshold so re-enable restores it
@@ -498,6 +505,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         _LOGGER.info(
             f"{device_name}: DLB config set — "
+            f"dlb_enabled={cfg['dlb_enabled']:#04x} "
             f"extreme={cfg['extreme']:#04x} dlb_mode={dlb_mode_byte:#04x} "
             f"night={cfg['night']:#04x} "
             f"night_start={cfg['night_start']} night_end={cfg['night_end']}"

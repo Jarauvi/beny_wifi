@@ -144,6 +144,7 @@ async def async_setup_services(hass: HomeAssistant) -> bool:
 
         await coordinator.async_set_dlb_config(
             device_name,
+            dlb_enabled=call.data.get("dlb_enabled", None),
             dlb_mode=dlb_mode,
             hybrid_current=call.data.get("hybrid_current", None),
             extreme_mode=call.data.get("extreme_mode", None),

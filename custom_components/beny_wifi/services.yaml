@@ -173,6 +173,12 @@ set_dlb_config:
       selector:
         device:
           integration: beny_wifi
+    dlb_enabled:
+      name: "PV Dynamic Load Balance"
+      description: "Master toggle for the entire DLB feature. Mirrors the 'PV Dynamic Load Balance' switch in the Z-Box app."
+      required: false
+      selector:
+        boolean: {}
     dlb_mode:
       name: "DLB Mode"
       description: "Primary DLB operating mode."
