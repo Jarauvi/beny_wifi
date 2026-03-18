@@ -416,6 +416,8 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Apply any supplied overrides
         if dlb_enabled is not None:
             cfg["dlb_enabled"] = 0x01 if dlb_enabled else 0x00
+
+        if extreme_mode is not None:
             cfg["extreme"] = 0x01 if extreme_mode else 0x00
 
         if night_mode is not None:
