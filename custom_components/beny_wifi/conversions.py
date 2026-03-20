@@ -158,8 +158,13 @@ def get_message_type(data: str) -> CLIENT_MESSAGE | SERVER_MESSAGE:
     # Additional status message type 36 added
     if msg_int == 35 or msg_int == 36:
         return SERVER_MESSAGE.SEND_VALUES_3P
-    if msg_int == 33:
-        return SERVER_MESSAGE.SEND_DLB
+    # SEND_DLB detection: both variants share message_type=7b.
+    # The msg_id field encodes the msg_len byte, so the packet size is directly readable:
+    #   1P SEND_DLB:   msg_int=17  (0x0011 → msg_len=0x11=17 bytes)
+    #   3P SEND_DLB:   msg_int=33  (0x0021 → msg_len=0x21=33 bytes, per-phase fields)
+    # Confirmed from BCP-AT1N-L capture vs Z-Box ground truth.
+    if msg_int == 33 and message_type.upper() == '7B':
+        return SERVER_MESSAGE.SEND_DLB_3P
     if msg_int == 17:
         if message_type.upper() == '7B':
             return SERVER_MESSAGE.SEND_DLB

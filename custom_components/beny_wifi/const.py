@@ -452,13 +452,42 @@ class SERVER_MESSAGE(Enum):
         }
     }
     SEND_DLB = {
-        "description": "Receive dlb values",
+        "description": "Receive DLB power values from 1-phase charger (msg_len=0x11, 17 bytes). "
+                       "Packet is fully mapped: 8B header + 8B data (4×16-bit fields) + 1B checksum. "
+                       "solar/ev/house are unsigned 16-bit ÷100 = kW; grid is signed 16-bit two's "
+                       "complement ÷100 = kW (negative = exporting). "
+                       "Detected by msg_id=0x0011 (msg_int=17) with message_type=7b. "
+                       "Verified against live 1P hardware capture with Z-Box ground truth.",
         "structure": {
             "request_type": slice(10, 12),
             "solar_power": slice(16, 20),
             "ev_power": slice(20, 24),
             "house_power": slice(24, 28),
             "grid_power": slice(28, 32)
+        }
+    }
+    SEND_DLB_3P = {
+        "description": "Receive DLB power values from 3-phase charger (msg_len=0x21, 33 bytes). "
+                       "Each of the four power fields is split into three 16-bit per-phase values "
+                       "(÷100 = kW per phase); sensor totals are the sum of all three phases. "
+                       "Grid phases are signed 16-bit two's complement (negative = exporting). "
+                       "Detected by msg_id=0x0021 (msg_int=33) with message_type=7b. "
+                       "Reverse-engineered from BCP-AT1N-L capture vs Z-Box ground truth: "
+                       "Solar=3.31 kW, House=0.46 kW, Grid=−2.85 kW, EV=0.00 kW. "
+                       "Confirmed: sum of per-phase raws ÷100 matches Z-Box totals to within 0.05 kW.",
+        "structure": {
+            "solar_phase1": slice(16, 20),
+            "solar_phase2": slice(20, 24),
+            "solar_phase3": slice(24, 28),
+            "ev_phase1":    slice(28, 32),
+            "ev_phase2":    slice(32, 36),
+            "ev_phase3":    slice(36, 40),
+            "house_phase1": slice(40, 44),
+            "house_phase2": slice(44, 48),
+            "house_phase3": slice(48, 52),
+            "grid_phase1":  slice(52, 56),
+            "grid_phase2":  slice(56, 60),
+            "grid_phase3":  slice(60, 64),
         }
     }
     ACCESS_DENIED = {
