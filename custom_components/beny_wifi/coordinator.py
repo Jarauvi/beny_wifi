@@ -104,7 +104,6 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 _LOGGER.info(f"Field '{field}' has recovered and is available again")  # noqa: G004
             self._stale_counts[field] = 0
 
-
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data asynchronously.
 
