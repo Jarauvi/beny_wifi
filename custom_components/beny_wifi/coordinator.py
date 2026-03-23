@@ -73,9 +73,48 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if persisted:
             _LOGGER.debug(f"DLB config restored from config_entry.options: {self._dlb_config}")  # noqa: G004
 
+        # Tracks consecutive polls where a field returned None (sentinel/missing).
+        # Once a field hits STALE_THRESHOLD, is_field_stale() returns True so
+        # sensors can mark themselves unavailable instead of showing stale data.
+        self._stale_counts: dict[str, int] = {}
+
+    # Number of consecutive None polls before a field is considered stale.
+    # Set to 6 (3 minutes at 30s polling) to tolerate transient DLB sentinel
+    # values during normal charger state transitions without flipping unavailable.
+    STALE_THRESHOLD = 6
+
+    def is_field_stale(self, field: str) -> bool:
+        """Return True if the field has been missing for STALE_THRESHOLD consecutive polls."""
+        return self._stale_counts.get(field, 0) >= self.STALE_THRESHOLD
+
+    def _update_stale_count(self, field: str, value) -> None:
+        """Increment stale counter when value is None, reset it when a valid value arrives."""
+        if value is None:
+            self._stale_counts[field] = self._stale_counts.get(field, 0) + 1
+            if self._stale_counts[field] == self.STALE_THRESHOLD:
+                _LOGGER.warning(  # noqa: G004
+                    f"Field '{field}' has been unavailable for {self.STALE_THRESHOLD} "
+                    f"consecutive polls — marking as stale"
+                )
+        else:
+            if self._stale_counts.get(field, 0) >= self.STALE_THRESHOLD:
+                _LOGGER.info(f"Field '{field}' has recovered and is available again")  # noqa: G004
+            self._stale_counts[field] = 0
+
     async def _async_update_data(self) -> dict[str, Any]:
-        """Fetch data asynchronously."""
-        return await self._fetch_data()
+        """Fetch data asynchronously.
+
+        If the entire fetch fails (device unreachable, UDP timeout, etc.) we still
+        increment stale counts for all DLB fields so they tip to unavailable after
+        STALE_THRESHOLD missed polls, just as they would for per-field sentinel failures.
+        """
+        try:
+            return await self._fetch_data()
+        except UpdateFailed:
+            if self.config_entry.data.get(DLB):
+                for key in ("grid_power", "house_power", "ev_power", "solar_power"):
+                    self._update_stale_count(key, None)
+            raise
 
     async def async_read_dlb_config(self) -> bool:
         """Attempt to read current DLB config from charger to populate _dlb_config cache.
@@ -208,12 +247,16 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
                     if data_dlb is None:
                         _LOGGER.warning("DLB response had invalid checksum — skipping DLB data this cycle")
+                        for key in ("grid_power", "house_power", "ev_power", "solar_power"):
+                            self._update_stale_count(key, None)
                     else:
-                        # Only assign non-None values; None means the charger sent a sentinel
+                        # Track staleness per field. None means the charger sent a sentinel
                         # (0xFF00+) indicating DLB data is temporarily unavailable.
-                        # Omitting the key lets BenyWifiPowerSensor retain its last valid state.
+                        # Only assign valid values so sensors can retain last known state
+                        # until is_field_stale() tips them to unavailable after STALE_THRESHOLD.
                         for key in ("grid_power", "house_power", "ev_power", "solar_power"):
                             val = data_dlb.get(key)
+                            self._update_stale_count(key, val)
                             if val is not None:
                                 data[key] = val
 
@@ -221,6 +264,8 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     _LOGGER.warning(
                         f"DLB fetch failed (non-fatal): {dlb_err} — DLB sensors will retain last valid value"
                     )
+                    for key in ("grid_power", "house_power", "ev_power", "solar_power"):
+                        self._update_stale_count(key, None)
                     # Do not re-raise: the primary charger data is still valid
 
             # Expose current DLB config state so entities can read it
