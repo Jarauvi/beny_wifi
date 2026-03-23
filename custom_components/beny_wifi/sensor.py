@@ -7,10 +7,28 @@ from homeassistant.const import (
     UnitOfElectricPotential,
     UnitOfEnergy,
     UnitOfPower,
+    UnitOfTemperature
 )
-from homeassistant.helpers.entity import DeviceInfo, Entity
 
-from .const import CHARGER_TYPE, DLB, DOMAIN, MODEL, SERIAL
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorStateClass,
+    SensorEntity,
+)
+
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from .const import (
+    CHARGER_TYPE, 
+    DLB, 
+    DOMAIN, 
+    MODEL, 
+    SERIAL,
+    SECTION_DEVICE,
+    get_device_id,
+    get_config_parameter
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -18,96 +36,92 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up sensor platform."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
-    device_id = config_entry.data[SERIAL]
-    device_model = config_entry.data[MODEL]
-    device_type = config_entry.data[CHARGER_TYPE]
-    dlb = config_entry.data[DLB]
+    serial = get_config_parameter(config_entry, SECTION_DEVICE, SERIAL)
+    device_model = get_config_parameter(config_entry, SECTION_DEVICE, MODEL)
+    device_type = get_config_parameter(config_entry, SECTION_DEVICE, CHARGER_TYPE)
+    dlb = get_config_parameter(config_entry, SECTION_DEVICE, DLB)
 
     sensors = []
 
     # by default only all 1-phase sensors are included
     if device_type == '1P':
         sensors = [
-            BenyWifiChargerStateSensor(coordinator, "charger_state", device_id=device_id, device_model=device_model),
-            BenyWifiPowerSensor(coordinator, "power", device_id=device_id, device_model=device_model),
-            BenyWifiVoltageSensor(coordinator, "voltage1", device_id=device_id, device_model=device_model),
-            BenyWifiCurrentSensor(coordinator, "current1", device_id=device_id, device_model=device_model),
-            BenyWifiCurrentSensor(coordinator, "max_current", device_id=device_id, device_model=device_model),
-            BenyWifiEnergySensor(coordinator, "total_kwh", device_id=device_id, device_model=device_model),
-            BenyWifiTemperatureSensor(coordinator, "temperature", device_id=device_id, device_model=device_model),
-            BenyWifiEnergySensor(coordinator, "maximum_session_consumption", icon="mdi:meter-electric", device_id=device_id, device_model=device_model),
-            BenyWifiTimerSensor(coordinator, "timer_start", icon="mdi:timer-sand-full", device_id=device_id, device_model=device_model),
-            BenyWifiTimerSensor(coordinator, "timer_end", icon="mdi:timer-sand-empty", device_id=device_id, device_model=device_model)
+            BenyWifiChargerStateSensor(coordinator, "charger_state", device_model=device_model, serial=serial),
+            BenyWifiPowerSensor(coordinator, "power", device_model=device_model, serial=serial),
+            BenyWifiVoltageSensor(coordinator, "voltage1", device_model=device_model, serial=serial),
+            BenyWifiCurrentSensor(coordinator, "current1", device_model=device_model, serial=serial),
+            BenyWifiCurrentSensor(coordinator, "max_current", device_model=device_model, serial=serial),
+            BenyWifiEnergySensor(coordinator, "total_kwh", device_model=device_model, serial=serial),
+            BenyWifiTemperatureSensor(coordinator, "temperature", device_model=device_model, serial=serial),
+            BenyWifiEnergySensor(coordinator, "maximum_session_consumption", icon="mdi:meter-electric", device_model=device_model, serial=serial),
+            BenyWifiTimerSensor(coordinator, "timer_start", icon="mdi:timer-sand-full", device_model=device_model, serial=serial),
+            BenyWifiTimerSensor(coordinator, "timer_end", icon="mdi:timer-sand-empty", device_model=device_model, serial=serial)
         ]
 
     # add all three phases if model supports them
     elif device_type == '3P':
         sensors = [
-            BenyWifiChargerStateSensor(coordinator, "charger_state", device_id=device_id, device_model=device_model),
-            BenyWifiPowerSensor(coordinator, "power", device_id=device_id, device_model=device_model),
-            BenyWifiVoltageSensor(coordinator, "voltage1", device_id=device_id, device_model=device_model),
-            BenyWifiVoltageSensor(coordinator, "voltage2", device_id=device_id, device_model=device_model),
-            BenyWifiVoltageSensor(coordinator, "voltage3", device_id=device_id, device_model=device_model),
-            BenyWifiCurrentSensor(coordinator, "current1", device_id=device_id, device_model=device_model),
-            BenyWifiCurrentSensor(coordinator, "current2", device_id=device_id, device_model=device_model),
-            BenyWifiCurrentSensor(coordinator, "current3", device_id=device_id, device_model=device_model),
-            BenyWifiCurrentSensor(coordinator, "max_current", device_id=device_id, device_model=device_model),
-            BenyWifiEnergySensor(coordinator, "total_kwh", device_id=device_id, device_model=device_model),
-            BenyWifiTemperatureSensor(coordinator, "temperature", device_id=device_id, device_model=device_model),
-            BenyWifiEnergySensor(coordinator, "maximum_session_consumption", icon="mdi:meter-electric", device_id=device_id, device_model=device_model),
-            BenyWifiTimerSensor(coordinator, "timer_start", icon="mdi:timer-sand-full", device_id=device_id, device_model=device_model),
-            BenyWifiTimerSensor(coordinator, "timer_end", icon="mdi:timer-sand-empty", device_id=device_id, device_model=device_model)
+            BenyWifiChargerStateSensor(coordinator, "charger_state", device_model=device_model, serial=serial),
+            BenyWifiPowerSensor(coordinator, "power", device_model=device_model, serial=serial),
+            BenyWifiVoltageSensor(coordinator, "voltage1", device_model=device_model, serial=serial),
+            BenyWifiVoltageSensor(coordinator, "voltage2", device_model=device_model, serial=serial),
+            BenyWifiVoltageSensor(coordinator, "voltage3", device_model=device_model, serial=serial),
+            BenyWifiCurrentSensor(coordinator, "current1", device_model=device_model, serial=serial),
+            BenyWifiCurrentSensor(coordinator, "current2", device_model=device_model, serial=serial),
+            BenyWifiCurrentSensor(coordinator, "current3", device_model=device_model, serial=serial),
+            BenyWifiCurrentSensor(coordinator, "max_current", device_model=device_model, serial=serial),
+            BenyWifiEnergySensor(coordinator, "total_kwh", device_model=device_model, serial=serial),
+            BenyWifiTemperatureSensor(coordinator, "temperature", device_model=device_model, serial=serial),
+            BenyWifiEnergySensor(coordinator, "maximum_session_consumption", icon="mdi:meter-electric", device_model=device_model, serial=serial),
+            BenyWifiTimerSensor(coordinator, "timer_start", icon="mdi:timer-sand-full", device_model=device_model, serial=serial),
+            BenyWifiTimerSensor(coordinator, "timer_end", icon="mdi:timer-sand-empty", device_model=device_model, serial=serial)
         ]
 
     # TODO: DLB
     if dlb:
         sensors.extend([
-            BenyWifiPowerSensor(coordinator, "grid_power", icon="mdi:transmission-tower", device_id=device_id, device_model=device_model),
-            BenyWifiPowerSensor(coordinator, "solar_power", icon="mdi:solar-power-variant", device_id=device_id, device_model=device_model),
-            BenyWifiPowerSensor(coordinator, "ev_power", icon="mdi:car-electric", device_id=device_id, device_model=device_model),
-            BenyWifiPowerSensor(coordinator, "house_power", icon="mdi:home-lightning-bolt", device_id=device_id, device_model=device_model),
+            BenyWifiPowerSensor(coordinator, "grid_power", icon="mdi:transmission-tower", device_model=device_model, serial=serial),
+            BenyWifiPowerSensor(coordinator, "solar_power", icon="mdi:solar-power-variant", device_model=device_model, serial=serial),
+            BenyWifiPowerSensor(coordinator, "ev_power", icon="mdi:car-electric", device_model=device_model, serial=serial),
+            BenyWifiPowerSensor(coordinator, "house_power", icon="mdi:home-lightning-bolt", device_model=device_model, serial=serial),
         ])
 
     async_add_entities(sensors)
 
-class BenyWifiSensor(Entity):
+class BenyWifiSensor(CoordinatorEntity, SensorEntity):
     """Charger sensor model."""
+    _attr_has_entity_name = True
 
-    def __init__(self, coordinator, key, device_id=None, device_model=None, icon=None):
+    def __init__(self, coordinator, key, device_model=None, serial=None, icon=None):
         """Initialize the sensor."""
+        super().__init__(coordinator)
         self.coordinator = coordinator
         self.key = key
         self._attr_translation_key = key
-        self._device_id = device_id
         self._device_model = device_model
-        self.entity_id = f"sensor.{device_id}_{key}"
+        self._serial = serial
         self._attr_has_entity_name = True
+        self._attr_unique_id = f"{serial}_{key}"
         self._icon = icon
         self._last_valid_state = None
+        self._attr_suggested_object_id = key
 
     @property
-    def unique_id(self):
-        """Return a unique ID for this sensor."""
-        return f"{self._device_id}_{self.key}"
-
-    @property
-    def state(self):
+    def native_value(self):
         """Return the current state of the sensor."""
+        if self.coordinator.data is None:
+            return None
         return self.coordinator.data.get(self.key)
-
-    async def async_update(self):
-        """Update the sensor."""
-        await self.coordinator.async_request_refresh()
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         return DeviceInfo(
-            identifiers = {(DOMAIN, self._device_id)},
-            name=f"Beny Charger {self._device_id}",
+            identifiers = {(DOMAIN, self._serial)},
+            name = get_device_id(self.hass, self._serial, self._device_model),
             manufacturer = "ZJ Beny",
             model = self._device_model,
-            serial_number=self._device_id
+            serial_number=self._serial
         )
 
     @property
@@ -118,157 +132,77 @@ class BenyWifiSensor(Entity):
 class BenyWifiChargerStateSensor(BenyWifiSensor):
     """Charger state sensor class."""
 
-    def __init__(self, coordinator, key, device_id=None, device_model=None, icon="mdi:ev-station"):
+    def __init__(self, coordinator, key, device_model=None, serial=None, icon="mdi:ev-station"):
         """Initialize sensor."""
-        super().__init__(coordinator, key, device_id, device_model, icon)
+        super().__init__(coordinator, key, serial=serial, device_model=device_model, icon=icon)
 
 class BenyWifiCurrentSensor(BenyWifiSensor):
     """Current sensor class."""
+    _attr_device_class = SensorDeviceClass.CURRENT
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
 
-    def __init__(self, coordinator, key, device_id=None, device_model=None, icon="mdi:sine-wave"):
+    def __init__(self, coordinator, key, device_model=None, serial=None, icon="mdi:sine-wave"):
         """Initialize sensor."""
-        super().__init__(coordinator, key, device_id, device_model, icon)
-
-    @property
-    def unit_of_measurement(self):
-        """Sensor unit."""
-        return UnitOfElectricCurrent.AMPERE
+        super().__init__(coordinator, key, serial=serial, device_model=device_model, icon=icon)
 
 class BenyWifiVoltageSensor(BenyWifiSensor):
     """Voltage sensor class."""
+    _attr_device_class = SensorDeviceClass.VOLTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = UnitOfElectricPotential.VOLT
 
-    def __init__(self, coordinator, key, device_id=None, device_model=None, icon="mdi:flash-triangle"):
+    def __init__(self, coordinator, key, device_model=None, serial=None, icon="mdi:flash-triangle"):
         """Initialize sensor."""
-        super().__init__(coordinator, key, device_id, device_model, icon)
-
-    @property
-    def unit_of_measurement(self):
-        """Sensor unit."""
-        return UnitOfElectricPotential.VOLT
+        super().__init__(coordinator, key, serial=serial, device_model=device_model, icon=icon)
 
 class BenyWifiPowerSensor(BenyWifiSensor):
     """Power sensor class."""
+    _attr_device_class = SensorDeviceClass.POWER
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = UnitOfPower.KILO_WATT
 
-    def __init__(self, coordinator, key, device_id=None, device_model=None, icon="mdi:ev-plug-type2"):
+    def __init__(self, coordinator, key, device_model=None, serial=None, icon="mdi:ev-plug-type2"):
         """Initialize sensor."""
-        super().__init__(coordinator, key, device_id, device_model, icon)
-
+        super().__init__(coordinator, key, serial=serial, device_model=device_model, icon=icon)
+            
     @property
-    def unit_of_measurement(self):
-        """Sensor unit."""
-        return UnitOfPower.KILO_WATT
+    def available(self) -> bool:
+        """Return False once a DLB field has been None for STALE_THRESHOLD consecutive polls.
 
-    @property
-    def state(self):
-        """Return the current state of the sensor with spike filtering."""
-        raw_value = self.coordinator.data.get(self.key)
-        
-        # List of common communication error values
-        INVALID_VALUES = [65535, 65534, 999999, -1]
-        
-        try:
-            power = float(raw_value)
-            
-            # Check for communication error values
-            if power in INVALID_VALUES:
-                _LOGGER.warning(
-                    f"Beny {self._device_id} {self.key}: Communication error value detected: {power}, "
-                    f"using last valid value: {self._last_valid_state}"
-                )
-                return self._last_valid_state if self._last_valid_state is not None else 0
-            
-            # Define reasonable bounds based on sensor type
-            if self.key == "solar_power":
-                # Solar power should be 0 to max system capacity (adjust 20 to your system max + buffer)
-                min_valid = 0
-                max_valid = 30.0  # Adjust this to your solar system capacity + 20% buffer
-                
-                if not (min_valid <= power <= max_valid):
-                    _LOGGER.warning(
-                        f"Beny {self._device_id} {self.key}: Spike detected: {power} kW "
-                        f"(valid range: {min_valid}-{max_valid} kW), "
-                        f"using last valid value: {self._last_valid_state}"
-                    )
-                    return self._last_valid_state if self._last_valid_state is not None else 0
-                    
-            elif self.key == "grid_power":
-                # Grid power can be negative (export) or positive (import)
-                # Adjust these limits based on your grid connection capacity
-                min_valid = -30.0  # Max export
-                max_valid = 30.0   # Max import
-                
-                if not (min_valid <= power <= max_valid):
-                    _LOGGER.warning(
-                        f"Beny {self._device_id} {self.key}: Spike detected: {power} kW "
-                        f"(valid range: {min_valid}-{max_valid} kW), "
-                        f"using last valid value: {self._last_valid_state}"
-                    )
-                    return self._last_valid_state if self._last_valid_state is not None else 0
-                    
-            elif self.key in ["ev_power", "power"]:
-                # EV power should be 0 to max charger capacity
-                min_valid = 0
-                max_valid = 25.0  # Typical max for home EV chargers (adjust if needed)
-                
-                if not (min_valid <= power <= max_valid):
-                    _LOGGER.warning(
-                        f"Beny {self._device_id} {self.key}: Spike detected: {power} kW "
-                        f"(valid range: {min_valid}-{max_valid} kW), "
-                        f"using last valid value: {self._last_valid_state}"
-                    )
-                    return self._last_valid_state if self._last_valid_state is not None else 0
-                    
-            elif self.key == "house_power":
-                # House power - adjust based on your main breaker capacity
-                min_valid = 0
-                max_valid = 50.0  # Typical house load (adjust to your needs)
-                
-                if not (min_valid <= power <= max_valid):
-                    _LOGGER.warning(
-                        f"Beny {self._device_id} {self.key}: Spike detected: {power} kW "
-                        f"(valid range: {min_valid}-{max_valid} kW), "
-                        f"using last valid value: {self._last_valid_state}"
-                    )
-                    return self._last_valid_state if self._last_valid_state is not None else 0
-            
-            # Value is valid, store it and return it
-            self._last_valid_state = power
-            return power
-            
-        except (ValueError, TypeError) as e:
-            _LOGGER.error(
-                f"Beny {self._device_id} {self.key}: Invalid value received: {raw_value}, error: {e}, "
-                f"using last valid value: {self._last_valid_state}"
-            )
-            return self._last_valid_state if self._last_valid_state is not None else 0
+        For non-DLB power fields, delegates entirely to CoordinatorEntity.available
+        which already handles device-unreachable via last_update_success.
+        For DLB fields, also checks the per-field stale counter so each can go
+        unavailable independently of the overall coordinator state.
+        """
+        if self.key in ("grid_power", "solar_power", "ev_power", "house_power"):
+            return super().available and not self.coordinator.is_field_stale(self.key)
+        return super().available
+
 
 class BenyWifiTemperatureSensor(BenyWifiSensor):
     """Temperature sensor class."""
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
 
-    def __init__(self, coordinator, key, device_id=None, device_model=None, icon="mdi:thermometer"):
+    def __init__(self, coordinator, key, device_model=None, serial=None, icon="mdi:thermometer"):
         """Initialize sensor."""
-        super().__init__(coordinator, key, device_id, device_model, icon)
-
-    @property
-    def unit_of_measurement(self):
-        """Sensor unit."""
-        return self.hass.config.units.temperature_unit
+        super().__init__(coordinator, key, serial=serial, device_model=device_model, icon=icon)
 
 class BenyWifiEnergySensor(BenyWifiSensor):
     """Energy sensor class."""
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
 
-    def __init__(self, coordinator, key, device_id=None, device_model=None, icon="mdi:power-plug-battery"):
+    def __init__(self, coordinator, key, device_model=None, serial=None, icon="mdi:power-plug-battery"):
         """Initialize sensor."""
-        super().__init__(coordinator, key, device_id, device_model, icon)
-
-    @property
-    def unit_of_measurement(self):
-        """Sensor unit."""
-        return UnitOfEnergy.KILO_WATT_HOUR
+        super().__init__(coordinator, key, serial=serial, device_model=device_model, icon=icon)
 
 class BenyWifiTimerSensor(BenyWifiSensor):
     """Timer sensor class."""
 
-    def __init__(self, coordinator, key, device_id=None, device_model=None, icon="mdi:timer-sand-empty"):
+    def __init__(self, coordinator, key, device_model=None, serial=None, icon="mdi:timer-sand-empty"):
         """Initialize sensor."""
-        super().__init__(coordinator, key, device_id, device_model, icon)
+        super().__init__(coordinator, key, serial=serial, device_model=device_model, icon=icon)

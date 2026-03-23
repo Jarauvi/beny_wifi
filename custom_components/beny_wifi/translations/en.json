@@ -128,52 +128,89 @@
     },
     "config": {
       "abort": {
-        "reconfigure_successful": "Reconfiguration was completed successfully"
+        "reconfigure_successful": "Reconfiguration was completed successfully",
+        "already_configured": "This device (Serial: {serial}) is already configured!"
       },
       "step": {
         "user": {
           "title": "Configure Beny Charger",
           "description": "Set up Beny Wifi integration.",
-          "data": {
-            "ip_address": "IP Address (if not found by serial)",
-            "port": "Port",
-            "serial": "Serial number",
-            "pin": "PIN number",
-            "update_interval": "Update interval",
-            "max_current_min": "Minimum current for controls (A)",
-            "max_current_max": "Maximum current for controls (A)",
-            "dlb": "DLB module installed?"
-          },
-          "data_description": {
-            "max_current_min": "Lower bound for the charging current slider (default 6A)",
-            "max_current_max": "Upper bound for the charging current slider (default 32A)",
-            "dlb": "Enable only if you have the optional DLB module physically attached to your charger"
+          "sections": {
+            "section_connection": {
+              "name": "Connection",
+              "description": "Settings for charger connection",
+              "data": {
+                "ip_address": "IP Address (if not found by serial)",
+                "port": "Port",
+                "update_interval": "Update interval"
+              }
+            },
+            "section_device": {
+              "name": "Device",
+              "description": "Device specific settings",
+              "data": {
+                "serial": "Serial number",
+                "pin": "PIN number",
+                "dlb": "DLB module installed?"
+              }
+            },
+            "section_current_limits": {
+              "name": "Currents",
+              "description": "Define safe limits for min and max currents",
+              "data": {
+                "max_current_min": "Minimum current for controls (A)",
+                "max_current_max": "Maximum current for controls (A)"
+              },
+              "data_description": {
+                "max_current_min": "Lower bound for the charging current slider (default 6A)",
+                "max_current_max": "Upper bound for the charging current slider (default 32A)",
+                "dlb": "Enable only if you have the optional DLB module physically attached to your charger"
+              }
+            }
           }
         },
         "reconfigure": {
           "title": "Reconfigure Beny Charger",
           "description": "Update your Beny Wifi integration settings.",
-          "data": {
-            "ip_address": "IP Address (if not found by serial)",
-            "port": "Port",
-            "serial": "Serial number",
-            "pin": "PIN number",
-            "update_interval": "Update interval",
-            "max_current_min": "Minimum current for controls (A)",
-            "max_current_max": "Maximum current for controls (A)",
-            "dlb": "DLB module installed?"
-          },
-          "data_description": {
-            "max_current_min": "Lower bound for the charging current slider (default 6A)",
-            "max_current_max": "Upper bound for the charging current slider (default 32A)",
-            "dlb": "Enable only if you have the optional DLB module physically attached to your charger"
+          "sections": {
+            "section_connection": {
+              "name": "Connection",
+              "description": "Settings for charger connection",
+              "data": {
+                "ip_address": "IP Address (if not found by serial)",
+                "port": "Port",
+                "update_interval": "Update interval"
+              }
+            },
+            "section_device": {
+              "name": "Device",
+              "description": "Device specific settings",
+              "data": {
+                "serial": "Serial number",
+                "pin": "PIN number",
+                "dlb": "DLB module installed?"
+              }
+            },
+            "section_current_limits": {
+              "name": "Currents",
+              "description": "Define safe limits for min and max currents",
+              "data": {
+                "max_current_min": "Minimum current for controls (A)",
+                "max_current_max": "Maximum current for controls (A)"
+              },
+              "data_description": {
+                "max_current_min": "Lower bound for the charging current slider (default 6A)",
+                "max_current_max": "Upper bound for the charging current slider (default 32A)",
+                "dlb": "Enable only if you have the optional DLB module physically attached to your charger"
+              }
+            }
           }
         }
       },
       "error": {
-        "device_already_configured": "This device is already configured.",
         "cannot_communicate": "Could not communicate with the device. See log for details.",
         "cannot_connect": "Cannot connect to the device. See log for details",
+        "wrong_pin": "Pin code was denied, check your pin code",
         "pin_not_numeric": "Pin code should be numeric",
         "pin_length_invalid": "Pin code should be 6 characters long",
         "serial_not_numeric": "Serial number should be numeric",

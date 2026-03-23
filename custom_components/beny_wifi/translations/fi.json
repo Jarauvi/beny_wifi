@@ -128,53 +128,90 @@
     },
     "config": {
       "abort": {
-        "reconfigure_successful": "Uudelleenmääritys tehtiin onnistuneesti"
+        "reconfigure_successful": "Uudelleenmääritys tehtiin onnistuneesti",
+        "already_configured": "Tämä laite (Sarjanumero: {serial}) on jo lisätty!"
       },
       "step": {
         "user": {
           "title": "Lisää latausasema",
           "description": "Beny Wifi integraation konfigurointi.",
-          "data": {
-            "ip_address": "IP-osoite (jos laite ei löydy sarjanumerolla)",
-            "port": "Portti",
-            "serial": "Sarjanumero",
-            "pin": "PIN-koodi",
-            "update_interval": "Päivitysväli",
-            "max_current_min": "Virransäädön minimi (A)",
-            "max_current_max": "Virransäädön maksimi (A)",
-            "dlb": "DLB-moduuli asennettu?"
-          },
-          "data_description": {
-            "max_current_min": "Latausvirran säätimen alaraja (oletus 6A)",
-            "max_current_max": "Latausvirran säätimen yläraja (oletus 32A)",
-            "dlb": "Ota käyttöön vain, jos latausasemaan on liitetty valinnainen DLB-moduuli"
+          "sections": {
+            "section_connection": {
+              "name": "Yhteys",
+              "description": "Yhdistäminen latauslaitteeseen",
+              "data": {
+                "ip_address": "IP-osoite (jos laite ei löydy sarjanumerolla)",
+                "port": "Portti",
+                "update_interval": "Päivitysväli"
+              }
+            },
+            "section_device": {
+              "name": "Latauslaite",
+              "description": "Laitekohtaiset asetukset",
+              "data": {
+                "serial": "Sarjanumero",
+                "pin": "PIN-koodi",
+                "dlb": "DLB-moduuli asennettu?"
+              }
+            },
+            "section_current_limits": {
+              "name": "Latausvirta",
+              "description": "Määritä turvalliset rajat latausvirralle",
+              "data": {
+                "max_current_min": "Virransäädön minimi (A)",
+                "max_current_max": "Virransäädön maksimi (A)"
+              },
+              "data_description": {
+                "max_current_min": "Latausvirran säätimen alaraja (oletus 6A)",
+                "max_current_max": "Latausvirran säätimen yläraja (oletus 32A)",
+                "dlb": "Ota käyttöön vain, jos latausasemaan on liitetty valinnainen DLB-moduuli"
+              }
+            }
           }
         },
         "reconfigure": {
           "title": "Muokkaa latausasemaa",
           "description": "Päivitä Beny Wifi integraation asetukset.",
-          "data": {
-            "ip_address": "IP-osoite (jos laite ei löydy sarjanumerolla)",
-            "port": "Portti",
-            "serial": "Sarjanumero",
-            "pin": "PIN-koodi",
-            "update_interval": "Päivitysväli",
-            "max_current_min": "Virransäädön minimi (A)",
-            "max_current_max": "Virransäädön maksimi (A)",
-            "dlb": "DLB-moduuli asennettu?"
-          },
-          "data_description": {
-            "max_current_min": "Latausvirran säätimen alaraja (oletus 6A)",
-            "max_current_max": "Latausvirran säätimen yläraja (oletus 32A)",
-            "dlb": "Ota käyttöön vain, jos latausasemaan on liitetty valinnainen DLB-moduuli"
+          "sections": {
+            "section_connection": {
+              "name": "Yhteys",
+              "description": "Yhdistäminen latauslaitteeseen",
+              "data": {
+                "ip_address": "IP-osoite (jos laite ei löydy sarjanumerolla)",
+                "port": "Portti",
+                "update_interval": "Päivitysväli"
+              }
+            },
+            "section_device": {
+              "name": "Latauslaite",
+              "description": "Laitekohtaiset asetukset",
+              "data": {
+                "serial": "Sarjanumero",
+                "pin": "PIN-koodi",
+                "dlb": "DLB-moduuli asennettu?"
+              }
+            },
+            "section_current_limits": {
+              "name": "Latausvirta",
+              "description": "Määritä turvalliset rajat latausvirralle",
+              "data": {
+                "max_current_min": "Virransäädön minimi (A)",
+                "max_current_max": "Virransäädön maksimi (A)"
+              },
+              "data_description": {
+                "max_current_min": "Latausvirran säätimen alaraja (oletus 6A)",
+                "max_current_max": "Latausvirran säätimen yläraja (oletus 32A)",
+                "dlb": "Ota käyttöön vain, jos latausasemaan on liitetty valinnainen DLB-moduuli"
+              }
+            }
           }
         }
       },
       "error": {
-        "device_already_configured": "Laite on jo lisätty.",
         "cannot_communicate": "Laitteen kanssa kommunikointi epäonnistui. (Katso loki-tiedosto)",
         "cannot_connect": "Laitteeseen ei voida yhdistää. Tarkasta IP-osoite ja portti. (Katso loki-tiedosto)",
         "pin_not_numeric": "Pin-koodin tulee olla numeerinen",
+        "wrong_pin": "Pin-koodia ei hyväksytty, tarkasta pin-koodi",
         "pin_length_invalid": "Pin-koodin tulee olla 6 merkkiä pitkä",
         "serial_not_numeric": "Sarjanumeron tulee olla numeerinen",
         "serial_length_invalid": "Sarjanumeron tulee olla 9 merkkiä pitkä",

@@ -89,16 +89,13 @@ def read_message(data, msg_type:str | None = None) -> dict:  # noqa: C901
                         value = value - 0x10000
                     msg[param] = float(value) / _DLB_POWER_DIVISOR
                 elif param in ["ev_power", "house_power", "solar_power"]:
-                    # Values >= 0xFF00 are error sentinels from the charger's DLB module,
-                    # sent when DLB data is temporarily unavailable. Return None so the
-                    # coordinator can retain the last valid reading rather than spiking.
-                    if value >= _DLB_SENTINEL_THRESHOLD:
-                        _LOGGER.debug(  # noqa: G004
-                            f"DLB sentinel value for {param}: {value:#06x} — skipping, will retain last valid"
-                        )
-                        msg[param] = None
-                    else:
-                        msg[param] = float(value) / _DLB_POWER_DIVISOR
+                    # All DLB power fields are signed 16-bit two's complement.
+                    # Negative values (e.g. 0xFF9A = -1.02 kW) are valid for CT setups
+                    # measuring net flow (e.g. solar line including battery charge/discharge).
+                    # The original sentinel threshold (0xFF00) was incorrectly blocking these.
+                    if value >= 0x8000:
+                        value = value - 0x10000
+                    msg[param] = float(value) / _DLB_POWER_DIVISOR
                 else:
                     msg[param] = value
             except ValueError:
@@ -130,14 +127,11 @@ def read_message(data, msg_type:str | None = None) -> dict:  # noqa: C901
                     value = value - 0x10000
                 phase_sums[target] += float(value) / _DLB_POWER_DIVISOR
             else:
-                # Solar, EV, house: unsigned. A sentinel on any single phase
-                # marks the whole field unavailable for this cycle.
-                if value >= _DLB_SENTINEL_THRESHOLD:
-                    _LOGGER.debug(  # noqa: G004
-                        f"3P DLB sentinel on {param}: {value:#06x} — marking {target} as unavailable"
-                    )
-                    sentinel_fields.add(target)
-                elif target not in sentinel_fields:
+                # Solar, EV, house: signed 16-bit two's complement (same as grid).
+                # Negative values are valid for net-flow CT setups.
+                if target not in sentinel_fields:
+                    if value >= 0x8000:
+                        value = value - 0x10000
                     phase_sums[target] += float(value) / _DLB_POWER_DIVISOR
 
         for field, total in phase_sums.items():

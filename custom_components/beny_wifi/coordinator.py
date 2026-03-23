@@ -20,6 +20,9 @@ from .const import (
     DOMAIN,
     REQUEST_TYPE,
     SERIAL,
+    SECTION_DEVICE,
+    get_config_parameter,
+    get_entity_state_by_key
 )
 from .conversions import convert_schedule, convert_timer, get_hex
 
@@ -73,9 +76,49 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if persisted:
             _LOGGER.debug(f"DLB config restored from config_entry.options: {self._dlb_config}")  # noqa: G004
 
+        # Tracks consecutive polls where a field returned None (sentinel/missing).
+        # Once a field hits STALE_THRESHOLD, is_field_stale() returns True so
+        # sensors can mark themselves unavailable instead of showing stale data.
+        self._stale_counts: dict[str, int] = {}
+
+    # Number of consecutive None polls before a field is considered stale.
+    # Set to 6 (3 minutes at 30s polling) to tolerate transient DLB sentinel
+    # values during normal charger state transitions without flipping unavailable.
+    STALE_THRESHOLD = 6
+
+    def is_field_stale(self, field: str) -> bool:
+        """Return True if the field has been missing for STALE_THRESHOLD consecutive polls."""
+        return self._stale_counts.get(field, 0) >= self.STALE_THRESHOLD
+
+    def _update_stale_count(self, field: str, value) -> None:
+        """Increment stale counter when value is None, reset it when a valid value arrives."""
+        if value is None:
+            self._stale_counts[field] = self._stale_counts.get(field, 0) + 1
+            if self._stale_counts[field] == self.STALE_THRESHOLD:
+                _LOGGER.warning(  # noqa: G004
+                    f"Field '{field}' has been unavailable for {self.STALE_THRESHOLD} "
+                    f"consecutive polls — marking as stale"
+                )
+        else:
+            if self._stale_counts.get(field, 0) >= self.STALE_THRESHOLD:
+                _LOGGER.info(f"Field '{field}' has recovered and is available again")  # noqa: G004
+            self._stale_counts[field] = 0
+
+
     async def _async_update_data(self) -> dict[str, Any]:
-        """Fetch data asynchronously."""
-        return await self._fetch_data()
+        """Fetch data asynchronously.
+
+        If the entire fetch fails (device unreachable, UDP timeout, etc.) we still
+        increment stale counts for all DLB fields so they tip to unavailable after
+        STALE_THRESHOLD missed polls, just as they would for per-field sentinel failures.
+        """
+        try:
+            return await self._fetch_data()
+        except UpdateFailed:
+            if self.config_entry.data.get(DLB):
+                for key in ("grid_power", "house_power", "ev_power", "solar_power"):
+                    self._update_stale_count(key, None)
+            raise
 
     async def async_read_dlb_config(self) -> bool:
         """Attempt to read current DLB config from charger to populate _dlb_config cache.
@@ -120,14 +163,14 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         # On the first successful fetch, attempt to read DLB config directly from
         # the charger so entities reflect actual state rather than defaults/persisted cache.
-        if self.config_entry.options.get(DLB, self.config_entry.data.get(DLB)) and not self._dlb_config_loaded:
+        if get_config_parameter(self.config_entry, SECTION_DEVICE, DLB, False) and not self._dlb_config_loaded:
             self._dlb_config_loaded = await self.async_read_dlb_config()
 
         try:
             # Build the request message
             request = build_message(
                 CLIENT_MESSAGE.REQUEST_DATA,
-                {"pin": self.config_entry.data[CONF_PIN], "request_type": get_hex(REQUEST_TYPE.VALUES.value)}
+                {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN), "request_type": get_hex(REQUEST_TYPE.VALUES.value)}
             ).encode('ascii')
 
             # Send UDP request asynchronously
@@ -199,11 +242,11 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             data['temperature'] = int(data['temperature'] - 100)
 
             # DLB data fetch — isolated so a DLB failure doesn't discard valid charger data
-            if self.config_entry.data[DLB]:
+            if get_config_parameter(self.config_entry, SECTION_DEVICE, DLB):
                 try:
                     request = build_message(
                         CLIENT_MESSAGE.REQUEST_DLB,
-                        {"pin": self.config_entry.data[CONF_PIN], "request_type": get_hex(REQUEST_TYPE.DLB.value)}
+                        {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN), "request_type": get_hex(REQUEST_TYPE.DLB.value)}
                     ).encode('ascii')
 
                     loop = asyncio.get_running_loop()
@@ -213,12 +256,16 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
                     if data_dlb is None:
                         _LOGGER.warning("DLB response had invalid checksum — skipping DLB data this cycle")
+                        for key in ("grid_power", "house_power", "ev_power", "solar_power"):
+                            self._update_stale_count(key, None)
                     else:
-                        # Only assign non-None values; None means the charger sent a sentinel
+                        # Track staleness per field. None means the charger sent a sentinel
                         # (0xFF00+) indicating DLB data is temporarily unavailable.
-                        # Omitting the key lets BenyWifiPowerSensor retain its last valid state.
+                        # Only assign valid values so sensors can retain last known state
+                        # until is_field_stale() tips them to unavailable after STALE_THRESHOLD.
                         for key in ("grid_power", "house_power", "ev_power", "solar_power"):
                             val = data_dlb.get(key)
+                            self._update_stale_count(key, val)
                             if val is not None:
                                 data[key] = val
 
@@ -226,7 +273,10 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     _LOGGER.warning(
                         f"DLB fetch failed (non-fatal): {dlb_err} — DLB sensors will retain last valid value"
                     )
+                    for key in ("grid_power", "house_power", "ev_power", "solar_power"):
+                        self._update_stale_count(key, None)
                     # Do not re-raise: the primary charger data is still valid
+
 
             # Expose current DLB config state so entities can read it
             data['dlb_config'] = dict(self._dlb_config)
@@ -267,19 +317,18 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Start or stop charging service."""
 
         # check if charger is unplugged
-        state_sensor_id = f"sensor.{self.config_entry.data[SERIAL]}_charger_state"
-        state_sensor_value = self.hass.states.get(state_sensor_id)
+        state_sensor_value = get_entity_state_by_key(self.hass, self.config_entry, "charger_state", "sensor")
 
         if state_sensor_value and state_sensor_value.state != CHARGER_STATE.UNPLUGGED.name.lower():
             if command == "start":
                 request = build_message(
                     CLIENT_MESSAGE.SEND_CHARGER_COMMAND,
-                    {"pin": self.config_entry.data[CONF_PIN], "charger_command": get_hex(CHARGER_COMMAND.START.value)}
+                    {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN), "charger_command": get_hex(CHARGER_COMMAND.START.value)}
                 ).encode('ascii')
             elif command == "stop":
                 request = build_message(
                     CLIENT_MESSAGE.SEND_CHARGER_COMMAND,
-                    {"pin": self.config_entry.data[CONF_PIN], "charger_command": get_hex(CHARGER_COMMAND.STOP.value)}
+                    {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN), "charger_command": get_hex(CHARGER_COMMAND.STOP.value)}
                 ).encode('ascii')
             else:
                 _LOGGER.error(f"Unknown command: {command}")
@@ -292,7 +341,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_set_max_monthly_consumption(self, device_name: str, maximum_consumption: int):
         """Set maximum consumption."""
 
-        request = build_message(CLIENT_MESSAGE.SET_MAX_MONTHLY_CONSUMPTION, {"pin": self.config_entry.data[CONF_PIN], "maximum_consumption": get_hex(maximum_consumption, 4)}).encode('ascii')
+        request = build_message(CLIENT_MESSAGE.SET_MAX_MONTHLY_CONSUMPTION, {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN), "maximum_consumption": get_hex(maximum_consumption, 4)}).encode('ascii')
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self._send_udp_request, request)
 
@@ -301,7 +350,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_set_max_session_consumption(self, device_name: str, maximum_consumption: int):
         """Set maximum consumption."""
 
-        request = build_message(CLIENT_MESSAGE.SET_MAX_SESSION_CONSUMPTION, {"pin": self.config_entry.data[CONF_PIN], "maximum_consumption": get_hex(maximum_consumption)}).encode('ascii')
+        request = build_message(CLIENT_MESSAGE.SET_MAX_SESSION_CONSUMPTION, {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN), "maximum_consumption": get_hex(maximum_consumption)}).encode('ascii')
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self._send_udp_request, request)
 
@@ -311,12 +360,11 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Set charging timer."""
 
         # check if charger is not unplugged
-        state_sensor_id = f"sensor.{self.config_entry.data[SERIAL]}_charger_state"
-        state_sensor_value = self.hass.states.get(state_sensor_id)
+        state_sensor_value = get_entity_state_by_key(self.hass, self.config_entry, "charger_state", "sensor")
 
         if state_sensor_value and state_sensor_value.state != CHARGER_STATE.UNPLUGGED.name.lower():
             timer_data = convert_timer(start_time, end_time)
-            timer_data['pin'] = self.config_entry.data[CONF_PIN]
+            timer_data['pin'] = get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN)
             request = build_message(CLIENT_MESSAGE.SET_TIMER, timer_data).encode('ascii')
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(None, self._send_udp_request, request)
@@ -326,7 +374,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_set_schedule(self, device_name: str, weekdays: list[bool], start_time: str, end_time: str):
         """Set charging timer."""
         schedule_data = convert_schedule(reversed(weekdays), start_time, end_time)
-        schedule_data['pin'] = self.config_entry.data[CONF_PIN]
+        schedule_data['pin'] = get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN)
         request = build_message(CLIENT_MESSAGE.SET_SCHEDULE, schedule_data).encode('ascii')
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self._send_udp_request, request)
@@ -337,11 +385,10 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Reset charging timer."""
 
         # check if charger is not unplugged
-        state_sensor_id = f"sensor.{self.config_entry.data[SERIAL]}_charger_state"
-        state_sensor_value = self.hass.states.get(state_sensor_id)
+        state_sensor_value = get_entity_state_by_key(self.hass, self.config_entry, "charger_state", "sensor")
 
         if state_sensor_value and state_sensor_value.state != CHARGER_STATE.UNPLUGGED.name.lower():
-            request = build_message(CLIENT_MESSAGE.RESET_TIMER, {"pin": self.config_entry.data[CONF_PIN]}).encode('ascii')
+            request = build_message(CLIENT_MESSAGE.RESET_TIMER, {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN)}).encode('ascii')
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(None, self._send_udp_request, request)
             _LOGGER.info(f"{device_name}: charging timer reset")
@@ -349,7 +396,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_request_weekly_schedule(self, device_name: str):
         """Get set weekly schedule from charger."""
 
-        request = build_message(CLIENT_MESSAGE.REQUEST_SETTINGS, {"pin": self.config_entry.data[CONF_PIN]}).encode('ascii')
+        request = build_message(CLIENT_MESSAGE.REQUEST_SETTINGS, {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN)}).encode('ascii')
         loop = asyncio.get_running_loop()
         response = await loop.run_in_executor(None, self._send_udp_request, request)
         # Decode and parse the response
@@ -375,7 +422,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         request = build_message(
             CLIENT_MESSAGE.SET_MAX_CURRENT,
             {
-                "pin": self.config_entry.data[CONF_PIN],
+                "pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN),
                 "max_current": format(max_current, "02x"),
             },
         ).encode("ascii")
@@ -477,7 +524,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         request = build_message(
             CLIENT_MESSAGE.SET_DLB_CONFIG,
             {
-                "pin":          self.config_entry.data[CONF_PIN],
+                "pin":          get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN),
                 "dlb_enabled":  format(cfg["dlb_enabled"],    "02x"),
                 "extreme":      format(cfg["extreme"],        "02x"),
                 "dlb_mode":     format(dlb_mode_byte,         "02x"),

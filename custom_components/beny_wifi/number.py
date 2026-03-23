@@ -1,13 +1,27 @@
 """Number entities for Beny Wifi."""
 
 import logging
-
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.const import UnitOfElectricCurrent
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CHARGER_TYPE, CONF_MAX_CURRENT_MAX, CONF_MAX_CURRENT_MIN, DEFAULT_MAX_CURRENT_MAX, DEFAULT_MAX_CURRENT_MIN, DLB, DOMAIN, DLB_MODE, MODEL, SERIAL
+from .const import (
+    CHARGER_TYPE, 
+    CONF_MAX_CURRENT_MAX, 
+    CONF_MAX_CURRENT_MIN, 
+    DEFAULT_MAX_CURRENT_MAX, 
+    DEFAULT_MAX_CURRENT_MIN, 
+    DLB, 
+    DOMAIN, 
+    DLB_MODE, 
+    MODEL, 
+    SERIAL,
+    SECTION_DEVICE,
+    SECTION_CURRENT_LIMITS,
+    get_device_id, 
+    get_config_parameter
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -15,23 +29,16 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up number platform."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
-    device_id = config_entry.data[SERIAL]
-    device_model = config_entry.data[MODEL]
-    dlb = config_entry.options.get(DLB, config_entry.data.get(DLB))
-    max_current_min = config_entry.options.get(
-        CONF_MAX_CURRENT_MIN,
-        config_entry.data.get(CONF_MAX_CURRENT_MIN, DEFAULT_MAX_CURRENT_MIN),
-    )
-
-    max_current_max = config_entry.options.get(
-        CONF_MAX_CURRENT_MAX,
-        config_entry.data.get(CONF_MAX_CURRENT_MAX, DEFAULT_MAX_CURRENT_MAX),
-    )
+    serial = get_config_parameter(config_entry, SECTION_DEVICE, SERIAL)
+    device_model = get_config_parameter(config_entry, SECTION_DEVICE, MODEL)
+    dlb = get_config_parameter(config_entry, SECTION_DEVICE, DLB, False)
+    max_current_min = get_config_parameter(config_entry, SECTION_CURRENT_LIMITS, CONF_MAX_CURRENT_MIN, DEFAULT_MAX_CURRENT_MIN)
+    max_current_max = get_config_parameter(config_entry, SECTION_CURRENT_LIMITS, CONF_MAX_CURRENT_MAX, DEFAULT_MAX_CURRENT_MAX)
     numbers = [
         BenyWifiMaxCurrentNumber(
             coordinator,
             "max_current_control",
-            device_id=device_id,
+            serial=serial,
             device_model=device_model,
             min_value=max_current_min,
             max_value=max_current_max,
@@ -42,63 +49,64 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         numbers.extend([
             BenyWifiHybridCurrentNumber(
                 coordinator, "hybrid_current",
-                device_id=device_id, device_model=device_model,
+                serial=serial, device_model=device_model,
             ),
             BenyWifiNightStartNumber(
                 coordinator, "night_start_hour",
-                device_id=device_id, device_model=device_model,
+                serial=serial, device_model=device_model,
             ),
             BenyWifiNightEndNumber(
                 coordinator, "night_end_hour",
-                device_id=device_id, device_model=device_model,
+                serial=serial, device_model=device_model,
             ),
             BenyWifiAntiOverloadValueNumber(
                 coordinator, "anti_overload_value",
-                device_id=device_id, device_model=device_model,
+                serial=serial, device_model=device_model,
             ),
         ])
 
     async_add_entities(numbers, update_before_add=True)
 
-
-def _device_info(device_id, device_model) -> DeviceInfo:
-    """Shared device info builder."""
-    return DeviceInfo(
-        identifiers={(DOMAIN, device_id)},
-        name=f"Beny Charger {device_id}",
-        manufacturer="ZJ Beny",
-        model=device_model,
-        serial_number=device_id,
-    )
-
-
-class BenyWifiMaxCurrentNumber(CoordinatorEntity, NumberEntity):
-    """Max Current control number entity."""
-
-    _attr_available = True
-
-    def __init__(self, coordinator, key, device_id=None, device_model=None, min_value=DEFAULT_MAX_CURRENT_MIN, max_value=DEFAULT_MAX_CURRENT_MAX):
+class BenyWifiBaseNumber(CoordinatorEntity, NumberEntity):
+    """Base class for numbers."""
+    
+    def __init__(self, coordinator, key, serial=None, device_model=None, min_value=DEFAULT_MAX_CURRENT_MIN, max_value=DEFAULT_MAX_CURRENT_MAX, step_value=1):
         """Initialize the number entity."""
         super().__init__(coordinator)
         self.coordinator = coordinator
         self.key = key
         self._attr_translation_key = key
-        self._device_id = device_id
+        self._serial = serial
         self._device_model = device_model
         self._attr_has_entity_name = True
         self._attr_native_min_value = min_value
         self._attr_native_max_value = max_value
-        self._attr_native_step = 1
+        self._attr_native_step = step_value
+        self._attr_suggested_object_id = key  
+        
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return DeviceInfo(
+            identifiers = {(DOMAIN, self._serial)},
+            name = get_device_id(self.hass, self._serial, self._device_model),
+            manufacturer = "ZJ Beny",
+            model = self._device_model,
+            serial_number=self._serial
+        )
+
+class BenyWifiMaxCurrentNumber(BenyWifiBaseNumber):
+    """Max Current control number entity."""
+    _attr_available = True
+
+    def __init__(self, coordinator, key, serial=None, device_model=None, min_value=DEFAULT_MAX_CURRENT_MIN, max_value=DEFAULT_MAX_CURRENT_MAX):
+        """Initialize the number entity."""
+        super().__init__(coordinator, key, serial=serial, device_model=device_model, min_value=min_value, max_value=max_value)
         self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
         self._attr_mode = NumberMode.SLIDER
-        self._attr_icon = "mdi:current-ac"
         self._local_value = None
-        self.entity_id = f"number.{device_id}_max_current_control"
-
-    @property
-    def unique_id(self):
-        """Return a unique ID for this number entity."""
-        return f"{self._device_id}_{self.key}"
+        self._attr_unique_id = f"{serial}_{key}"
+        self._attr_icon = "mdi:current-ac"
 
     @property
     def available(self) -> bool:
@@ -125,47 +133,27 @@ class BenyWifiMaxCurrentNumber(CoordinatorEntity, NumberEntity):
         """Store locally — press Send button to apply."""
         self._local_value = int(value)
         self.async_write_ha_state()
-        _LOGGER.info(f"Max current control for {self._device_id} set to {int(value)}A (stored locally)")
+        _LOGGER.info(f"Max current control for {self._serial} set to {int(value)}A (stored locally)")
 
     @property
     def should_poll(self) -> bool:
         """No need to poll, coordinator handles updates."""
         return False
 
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device information."""
-        return _device_info(self._device_id, self._device_model)
-
-
-class BenyWifiHybridCurrentNumber(CoordinatorEntity, NumberEntity):
+class BenyWifiHybridCurrentNumber(BenyWifiBaseNumber):
     """Current limit for Hybrid DLB mode (1–32 A).
 
     Adjusting this while already in Hybrid mode immediately resends the config.
     Adjusting it in any other mode stores the value ready for the next switch.
     """
 
-    def __init__(self, coordinator, key, device_id=None, device_model=None):
+    def __init__(self, coordinator, key, serial=None, device_model=None):
         """Initialize."""
-        super().__init__(coordinator)
-        self.coordinator = coordinator
-        self.key = key
-        self._attr_translation_key = key
-        self._device_id = device_id
-        self._device_model = device_model
-        self._attr_has_entity_name = True
+        super().__init__(coordinator, key, serial=serial, device_model=device_model, min_value=1, max_value=32)
         self._attr_icon = "mdi:current-ac"
-        self._attr_native_min_value = 1
-        self._attr_native_max_value = 32
-        self._attr_native_step = 1
         self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
         self._attr_mode = NumberMode.SLIDER
-        self.entity_id = f"number.{device_id}_{key}"
-
-    @property
-    def unique_id(self) -> str:
-        """Return unique ID."""
-        return f"{self._device_id}_{self.key}"
+        self._attr_unique_id = f"{serial}_{key}"
 
     @property
     def native_value(self) -> float:
@@ -175,7 +163,7 @@ class BenyWifiHybridCurrentNumber(CoordinatorEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         """Update hybrid current; resend to charger if currently in Hybrid mode."""
         current = int(value)
-        device_name = f"Beny Charger {self._device_id}"
+        device_name = get_device_id(self.hass, self._serial, self._device_model)
 
         self.coordinator._dlb_config["hybrid_current"] = current
 
@@ -191,38 +179,18 @@ class BenyWifiHybridCurrentNumber(CoordinatorEntity, NumberEntity):
             self.async_write_ha_state()
             _LOGGER.info(f"{device_name}: Hybrid current stored as {current}A (applies on next Hybrid mode switch)")
 
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device information."""
-        return _device_info(self._device_id, self._device_model)
-
-
-class BenyWifiNightStartNumber(CoordinatorEntity, NumberEntity):
+class BenyWifiNightStartNumber(BenyWifiBaseNumber):
     """Night Mode start hour (0–23, whole hours only).
 
     Uses sunset-down icon: the window begins when the sun goes down.
     """
 
-    def __init__(self, coordinator, key, device_id=None, device_model=None):
+    def __init__(self, coordinator, key, serial=None, device_model=None):
         """Initialize."""
-        super().__init__(coordinator)
-        self.coordinator = coordinator
-        self.key = key
-        self._attr_translation_key = key
-        self._device_id = device_id
-        self._device_model = device_model
-        self._attr_has_entity_name = True
+        super().__init__(coordinator, key, serial=serial, device_model=device_model, min_value=0, max_value=23)
         self._attr_icon = "mdi:weather-sunset-down"
-        self._attr_native_min_value = 0
-        self._attr_native_max_value = 23
-        self._attr_native_step = 1
         self._attr_mode = NumberMode.BOX
-        self.entity_id = f"number.{device_id}_{key}"
-
-    @property
-    def unique_id(self) -> str:
-        """Return unique ID."""
-        return f"{self._device_id}_{self.key}"
+        self._attr_unique_id = f"{serial}_{key}"
 
     @property
     def native_value(self) -> float:
@@ -232,42 +200,22 @@ class BenyWifiNightStartNumber(CoordinatorEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         """Update night start hour and resend config to charger."""
         hour = int(value)
-        device_name = f"Beny Charger {self._device_id}"
+        device_name = get_device_id(self.hass, self._serial, self._device_model)
         await self.coordinator.async_set_dlb_config(device_name, night_start=hour)
         _LOGGER.info(f"{device_name}: Night Mode start hour set to {hour:02d}:00")
 
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device information."""
-        return _device_info(self._device_id, self._device_model)
-
-
-class BenyWifiNightEndNumber(CoordinatorEntity, NumberEntity):
+class BenyWifiNightEndNumber(BenyWifiBaseNumber):
     """Night Mode end hour (0–23, whole hours only).
 
     Uses sunrise icon: the window ends when the sun comes up.
     """
 
-    def __init__(self, coordinator, key, device_id=None, device_model=None):
+    def __init__(self, coordinator, key, serial=None, device_model=None):
         """Initialize."""
-        super().__init__(coordinator)
-        self.coordinator = coordinator
-        self.key = key
-        self._attr_translation_key = key
-        self._device_id = device_id
-        self._device_model = device_model
-        self._attr_has_entity_name = True
+        super().__init__(coordinator, key, serial=serial, device_model=device_model, min_value=0, max_value=23)
         self._attr_icon = "mdi:weather-sunset-up"
-        self._attr_native_min_value = 0
-        self._attr_native_max_value = 23
-        self._attr_native_step = 1
         self._attr_mode = NumberMode.BOX
-        self.entity_id = f"number.{device_id}_{key}"
-
-    @property
-    def unique_id(self) -> str:
-        """Return unique ID."""
-        return f"{self._device_id}_{self.key}"
+        self._attr_unique_id = f"{serial}_{key}"
 
     @property
     def native_value(self) -> float:
@@ -277,16 +225,11 @@ class BenyWifiNightEndNumber(CoordinatorEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         """Update night end hour and resend config to charger."""
         hour = int(value)
-        device_name = f"Beny Charger {self._device_id}"
+        device_name = get_device_id(self.hass, self._serial, self._device_model)
         await self.coordinator.async_set_dlb_config(device_name, night_end=hour)
         _LOGGER.info(f"{device_name}: Night Mode end hour set to {hour:02d}:00")
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device information."""
-        return _device_info(self._device_id, self._device_model)
-
-class BenyWifiAntiOverloadValueNumber(CoordinatorEntity, NumberEntity):
+        
+class BenyWifiAntiOverloadValueNumber(BenyWifiBaseNumber):
     """Threshold value for Anti Overload Mode (1–99).
 
     This sets the grid-draw limit used when Anti Overload is enabled.
@@ -294,26 +237,12 @@ class BenyWifiAntiOverloadValueNumber(CoordinatorEntity, NumberEntity):
     Adjusting it while OFF stores the value ready for the next enable.
     """
 
-    def __init__(self, coordinator, key, device_id=None, device_model=None):
+    def __init__(self, coordinator, key, serial=None, device_model=None):
         """Initialize."""
-        super().__init__(coordinator)
-        self.coordinator = coordinator
-        self.key = key
-        self._attr_translation_key = key
-        self._device_id = device_id
-        self._device_model = device_model
-        self._attr_has_entity_name = True
+        super().__init__(coordinator, key, serial=serial, device_model=device_model, min_value=1, max_value=99)
         self._attr_icon = "mdi:transmission-tower-off"
-        self._attr_native_min_value = 1
-        self._attr_native_max_value = 99
-        self._attr_native_step = 1
         self._attr_mode = NumberMode.BOX
-        self.entity_id = f"number.{device_id}_{key}"
-
-    @property
-    def unique_id(self) -> str:
-        """Return unique ID."""
-        return f"{self._device_id}_{self.key}"
+        self._attr_unique_id = f"{serial}_{key}"
 
     @property
     def native_value(self) -> float:
@@ -323,7 +252,7 @@ class BenyWifiAntiOverloadValueNumber(CoordinatorEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         """Update Anti Overload threshold; resend to charger if currently enabled."""
         threshold = int(value)
-        device_name = f"Beny Charger {self._device_id}"
+        device_name = get_device_id(self.hass, self._serial, self._device_model)
         await self.coordinator.async_set_dlb_config(
             device_name, anti_overload_value=threshold
         )
@@ -331,8 +260,3 @@ class BenyWifiAntiOverloadValueNumber(CoordinatorEntity, NumberEntity):
             f"{device_name}: Anti Overload threshold set to {threshold}"
             + (" (sent to charger)" if self.coordinator._dlb_config.get("anti_overload", 0) != 0 else " (stored, applies on next enable)")
         )
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device information."""
-        return _device_info(self._device_id, self._device_model)
