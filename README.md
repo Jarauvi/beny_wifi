@@ -86,10 +86,10 @@ The integration is configured entirely through the Home Assistant UI.
 1. Navigate to **Settings > Devices & Services**.
 2. Click **Add Integration** and search for **Beny Wifi**.
 3. Follow the guided setup:
-   * **Connection:** Enter the IP Address (if not auto-discovered), Port, and your preferred Update Interval.
+   * **Connection:** Enter the IP Address (if not auto-discovered), Port, and your preferred Update Interval (Default: 10s).
    * **Device:** Provide the **Serial Number** (9 digits) and **PIN** (6 digits).
-   * **DLB:** Specify if you have the physical Dynamic Load Balancing module installed.
    * **Safe Limits:** Define the min/max current bounds for your UI sliders (Default: 6A–32A).
+   * **DLB:** Specify if you have the physical Dynamic Load Balancing module installed. If enabled, you can also configure the **Anti Overload** toggle and its **threshold value** (1–99, Default: 63) here.
 
 ### Reconfiguration
 If you change your charger's IP or PIN, you don't need to delete the integration. Simply go to the **Beny Wifi** card in Devices & Services and select **Reconfigure**.
@@ -149,7 +149,7 @@ If you encounter persistent issues, please enable debug logging and provide the 
 | **PV Dynamic Load Balance** | `Switch` | Master toggle for the entire DLB feature |
 | **Extreme Mode** | `Switch` | Reduce or stop charging when home load is high |
 | **Night Mode** | `Switch` | Enable full-speed charging during the nightly window |
-| **Anti Overload** | `Switch` | Toggle Anti Overload protection |
+| **Anti Overload** | `Switch` | Toggle Anti Overload protection (initial state and threshold configured during setup) |
 | **Start / Stop Charging** | `Button` | Manually trigger charging start or stop |
 | **Send Max Current** | `Button` | Push the current slider value to the charger |
 
@@ -191,6 +191,9 @@ Configures advanced charger behavior. All fields are optional—only supplied fi
 | `night_start/end` | Defines the start/end hour (0–23) for Night Mode. |
 | `anti_overload` | Toggle Anti Overload protection. |
 | `anti_overload_value` | Threshold (1–99) for Anti Overload (Default: 63). |
+
+> [!NOTE]
+> The initial Anti Overload state and threshold are configured during integration setup in the **DLB** section. The `set_dlb_config` service can override these at runtime without changing your setup configuration.
 
 </details>
 
