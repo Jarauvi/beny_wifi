@@ -1,387 +1,442 @@
 {
-    "title": "Beny Wifi",
-    "entity": {
-      "sensor": {
-        "charger_state": {
-          "name": "Charger State",
-          "state": {
-            "abnormal": "abnormal",
-            "unplugged": "unplugged",
-            "standby": "standby",
-            "starting": "starting",
-            "unknown": "unknown",
-            "waiting": "waiting",
-            "charging": "charging"
-          }
-        },
-        "power": {
-          "name": "Power"
-        },
-        "voltage1": {
-          "name": "Voltage L1"
-        },
-        "voltage2": {
-          "name": "Voltage L2"
-        },
-        "voltage3": {
-          "name": "Voltage L3"
-        },
-        "current1": {
-          "name": "Current L1"
-        },
-        "current2": {
-          "name": "Current L2"
-        },
-        "current3": {
-          "name": "Current L3"
-        },
-        "grid_power": {
-          "name": "DLB Grid Power"
-        },
-        "ev_power": {
-          "name": "DLB EV Power"
-        },
-        "house_power": {
-          "name": "DLB House Power"
-        },
-        "solar_power": {
-          "name": "DLB Solar Power"
-        },
-        "max_current": {
-          "name": "Max Current"
-        },
-        "total_kwh": {
-          "name": "Total Energy"
-        },
-        "temperature": {
-          "name": "Temperature"
-        },
-        "maximum_session_consumption": {
-          "name": "Maximum Session Consumption"
-        },
-        "timer_start": {
-          "name": "Timer Start",
-          "state": {
-            "not_set": "Not set"
-          }
-        },
-        "timer_end": {
-          "name": "Timer End",
-          "state": {
-            "not_set": "Not set"
-          }
+  "title": "Beny Wifi",
+  "entity": {
+    "sensor": {
+      "charger_state": {
+        "name": "Charger State",
+        "state": {
+          "abnormal": "abnormal",
+          "unplugged": "unplugged",
+          "standby": "standby",
+          "starting": "starting",
+          "unknown": "unknown",
+          "waiting": "waiting",
+          "charging": "charging"
         }
       },
-      "number": {
-        "max_current_control": {
-          "name": "Max Current Control"
-        },
-        "hybrid_current": {
-          "name": "Hybrid Current Limit"
-        },
-        "night_start_hour": {
-          "name": "Night Mode Start Hour"
-        },
-        "night_end_hour": {
-          "name": "Night Mode End Hour"
-        },
-        "anti_overload_value": {
-          "name": "Anti Overload Threshold"
+      "power": {
+        "name": "Power"
+      },
+      "voltage1": {
+        "name": "Voltage L1"
+      },
+      "voltage2": {
+        "name": "Voltage L2"
+      },
+      "voltage3": {
+        "name": "Voltage L3"
+      },
+      "current1": {
+        "name": "Current L1"
+      },
+      "current2": {
+        "name": "Current L2"
+      },
+      "current3": {
+        "name": "Current L3"
+      },
+      "grid_power": {
+        "name": "DLB Grid Power"
+      },
+      "ev_power": {
+        "name": "DLB EV Power"
+      },
+      "house_power": {
+        "name": "DLB House Power"
+      },
+      "solar_power": {
+        "name": "DLB Solar Power"
+      },
+      "max_current": {
+        "name": "Max Current"
+      },
+      "total_kwh": {
+        "name": "Total Energy"
+      },
+      "temperature": {
+        "name": "Temperature"
+      },
+      "maximum_session_consumption": {
+        "name": "Maximum Session Consumption"
+      },
+      "timer_start": {
+        "name": "Timer Start",
+        "state": {
+          "not_set": "Not set"
         }
       },
-      "button": {
-        "send_max_current": {
-          "name": "Send Max Current"
-        },
-        "start_charging": {
-          "name": "Start Charging"
-        },
-        "stop_charging": {
-          "name": "Stop Charging"
-        }
-      },
-      "select": {
-        "dlb_mode": {
-          "name": "DLB Mode",
-          "state": {
-            "pure_pv":    "Pure PV",
-            "hybrid":     "Hybrid",
-            "full_speed": "Full Speed",
-            "dlb_box":    "DLB Box"
-          }
-        }
-      },
-      "switch": {
-        "dlb_enabled": {
-          "name": "PV Dynamic Load Balance"
-        },
-        "extreme_mode": {
-          "name": "Extreme Mode"
-        },
-        "night_mode": {
-          "name": "Night Mode"
-        },
-        "anti_overload": {
-          "name": "Anti Overload"
+      "timer_end": {
+        "name": "Timer End",
+        "state": {
+          "not_set": "Not set"
         }
       }
     },
-    "config": {
-      "abort": {
-        "reconfigure_successful": "Reconfiguration was completed successfully"
+    "number": {
+      "max_current_control": {
+        "name": "Max Current Control"
       },
-      "step": {
-        "user": {
-          "title": "Configure Beny Charger",
-          "description": "Set up Beny Wifi integration.",
-          "data": {
-            "ip_address": "IP Address (if not found by serial)",
-            "port": "Port",
-            "serial": "Serial number",
-            "pin": "PIN number",
-            "update_interval": "Update interval",
-            "max_current_min": "Minimum current for controls (A)",
-            "max_current_max": "Maximum current for controls (A)",
-            "dlb": "DLB module installed?"
-          },
-          "data_description": {
-            "max_current_min": "Lower bound for the charging current slider (default 6A)",
-            "max_current_max": "Upper bound for the charging current slider (default 32A)",
-            "dlb": "Enable only if you have the optional DLB module physically attached to your charger"
-          }
-        },
-        "reconfigure": {
-          "title": "Reconfigure Beny Charger",
-          "description": "Update your Beny Wifi integration settings.",
-          "data": {
-            "ip_address": "IP Address (if not found by serial)",
-            "port": "Port",
-            "serial": "Serial number",
-            "pin": "PIN number",
-            "update_interval": "Update interval",
-            "max_current_min": "Minimum current for controls (A)",
-            "max_current_max": "Maximum current for controls (A)",
-            "dlb": "DLB module installed?"
-          },
-          "data_description": {
-            "max_current_min": "Lower bound for the charging current slider (default 6A)",
-            "max_current_max": "Upper bound for the charging current slider (default 32A)",
-            "dlb": "Enable only if you have the optional DLB module physically attached to your charger"
-          }
-        }
+      "hybrid_current": {
+        "name": "Hybrid Current Limit"
       },
-      "error": {
-        "device_already_configured": "This device is already configured.",
-        "cannot_communicate": "Could not communicate with the device. See log for details.",
-        "cannot_connect": "Cannot connect to the device. See log for details",
-        "pin_not_numeric": "Pin code should be numeric",
-        "pin_length_invalid": "Pin code should be 6 characters long",
-        "serial_not_numeric": "Serial number should be numeric",
-        "serial_length_invalid": "Serial number should be 9 characters long",
-        "no_response_timeout": "No response from the device. Check serial and pin code",
-        "cannot_resolve_ip": "Device IP cannot be resolved by serial. You can try to set it manually"
+      "night_start_hour": {
+        "name": "Night Mode Start Hour"
+      },
+      "night_end_hour": {
+        "name": "Night Mode End Hour"
       }
     },
-    "options": {
-      "step": {
-        "init": {
-          "title": "Options",
-          "description": "Update the options for your Beny Wifi charger."
-        }
-      }
-    },
-    "services": {
+    "button": {
+      "send_max_current": {
+        "name": "Send Max Current"
+      },
       "start_charging": {
-        "name": "Start charging",
-        "description": "Starts the charging process",
-        "fields": {
-          "device_id": {
-            "name": "Charger",
-            "description": "Target charger"
-          }
-        }
+        "name": "Start Charging"
       },
       "stop_charging": {
-        "name": "Stop charging",
-        "description": "Stops the charging process",
-        "fields": {
-          "device_id": {
-            "name": "Charger",
-            "description": "Target charger"
+        "name": "Stop Charging"
+      }
+    },
+    "select": {
+      "dlb_mode": {
+        "name": "DLB Mode",
+        "state": {
+          "pure_pv": "Pure PV",
+          "hybrid": "Hybrid",
+          "full_speed": "Full Speed",
+          "dlb_box": "DLB Box"
+        }
+      }
+    },
+    "switch": {
+      "dlb_enabled": {
+        "name": "PV Dynamic Load Balance"
+      },
+      "extreme_mode": {
+        "name": "Extreme Mode"
+      },
+      "night_mode": {
+        "name": "Night Mode"
+      }
+    }
+  },
+  "config": {
+    "abort": {
+      "reconfigure_successful": "Reconfiguration was completed successfully",
+      "already_configured": "This device (Serial: {serial}) is already configured!"
+    },
+    "step": {
+      "user": {
+        "title": "Configure Beny Charger",
+        "description": "Set up Beny Wifi integration.",
+        "sections": {
+          "section_connection": {
+            "name": "Connection",
+            "description": "Settings for charger connection",
+            "data": {
+              "ip_address": "IP Address (if not found by serial)",
+              "port": "Port",
+              "update_interval": "Update interval"
+            }
+          },
+          "section_device": {
+            "name": "Device",
+            "description": "Device specific settings",
+            "data": {
+              "serial": "Serial number",
+              "pin": "PIN number"
+            }
+          },
+          "section_current_limits": {
+            "name": "Currents",
+            "description": "Define safe limits for min and max currents",
+            "data": {
+              "max_current_min": "Minimum current for controls (A)",
+              "max_current_max": "Maximum current for controls (A)"
+            },
+            "data_description": {
+              "max_current_min": "Lower bound for the charging current slider (default 6A)",
+              "max_current_max": "Upper bound for the charging current slider (default 32A)"
+            }
+          },
+          "section_dlb": {
+            "name": "DLB",
+            "description": "Dynamic Load Balancing options",
+            "data": {
+              "dlb": "DLB module installed?",
+              "anti_overload_enabled": "Enable Anti Overload",
+              "anti_overload_threshold": "Anti Overload Threshold"
+            },
+            "data_description": {
+              "dlb": "Enable only if you have the optional DLB module physically attached to your charger",
+              "anti_overload_enabled": "Only applies when DLB is enabled. Limits grid draw using the threshold below",
+              "anti_overload_threshold": "Grid-draw limit (1–99). Default is 63. Only used when Anti Overload is enabled"
+            }
           }
         }
       },
-      "set_timer": {
-        "name": "Set timer",
-        "description": "Sets charging timer",
-        "fields": {
-          "device_id": {
-            "name": "Charger",
-            "description": "Target charger"
+      "reconfigure": {
+        "title": "Reconfigure Beny Charger",
+        "description": "Update your Beny Wifi integration settings.",
+        "sections": {
+          "section_connection": {
+            "name": "Connection",
+            "description": "Settings for charger connection",
+            "data": {
+              "ip_address": "IP Address (if not found by serial)",
+              "port": "Port",
+              "update_interval": "Update interval"
+            }
           },
-          "start_time": {
-            "name": "Start time",
-            "description": "Time to start charging"
+          "section_device": {
+            "name": "Device",
+            "description": "Device specific settings",
+            "data": {
+              "serial": "Serial number",
+              "pin": "PIN number"
+            }
           },
-          "end_time": {
-            "name": "End time",
-            "description": "Time to end charging"
+          "section_current_limits": {
+            "name": "Currents",
+            "description": "Define safe limits for min and max currents",
+            "data": {
+              "max_current_min": "Minimum current for controls (A)",
+              "max_current_max": "Maximum current for controls (A)"
+            },
+            "data_description": {
+              "max_current_min": "Lower bound for the charging current slider (default 6A)",
+              "max_current_max": "Upper bound for the charging current slider (default 32A)"
+            }
+          },
+          "section_dlb": {
+            "name": "DLB",
+            "description": "Dynamic Load Balancing options",
+            "data": {
+              "dlb": "DLB module installed?",
+              "anti_overload_enabled": "Enable Anti Overload",
+              "anti_overload_threshold": "Anti Overload Threshold"
+            },
+            "data_description": {
+              "dlb": "Enable only if you have the optional DLB module physically attached to your charger",
+              "anti_overload_enabled": "Only applies when DLB is enabled. Limits grid draw using the threshold below",
+              "anti_overload_threshold": "Grid-draw limit (1–99). Default is 63. Only used when Anti Overload is enabled"
+            }
           }
         }
-      },
-      "set_weekly_schedule": {
-        "name": "Set Schedule",
-        "description": "Sets charging schedule",
-        "fields": {
-          "device_id": {
-            "name": "Charger",
-            "description": "Target charger"
-          },
-          "sunday": {
-            "name": "Sunday",
-            "description": "Toggle Sunday"
-          },
-          "monday": {
-            "name": "Monday",
-            "description": "Toggle Monday"
-          },
-          "tuesday": {
-            "name": "Tuesday",
-            "description": "Toggle Tuesday"
-          },
-          "wednesday": {
-            "name": "Wednesday",
-            "description": "Toggle Wednesday"
-          },
-          "thursday": {
-            "name": "Thursday",
-            "description": "Toggle Thursday"
-          },
-          "friday": {
-            "name": "Friday",
-            "description": "Toggle Friday"
-          },
-          "saturday": {
-            "name": "Saturday",
-            "description": "Toggle Saturday"
-          },
-          "start_time": {
-            "name": "Start time",
-            "description": "Time to start charging"
-          },
-          "end_time": {
-            "name": "End time",
-            "description": "Time to end charging"
-          }
+      }
+    },
+    "error": {
+      "cannot_communicate": "Could not communicate with the device. See log for details.",
+      "cannot_connect": "Cannot connect to the device. See log for details",
+      "wrong_pin": "Pin code was denied, check your pin code",
+      "pin_not_numeric": "Pin code should be numeric",
+      "pin_length_invalid": "Pin code should be 6 characters long",
+      "serial_not_numeric": "Serial number should be numeric",
+      "serial_length_invalid": "Serial number should be 9 characters long",
+      "no_response_timeout": "No response from the device. Check serial and pin code",
+      "cannot_resolve_ip": "Device IP cannot be resolved by serial. You can try to set it manually"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options",
+        "description": "Update the options for your Beny Wifi charger."
+      }
+    }
+  },
+  "services": {
+    "start_charging": {
+      "name": "Start charging",
+      "description": "Starts the charging process",
+      "fields": {
+        "device_id": {
+          "name": "Charger",
+          "description": "Target charger"
         }
-      },
-      "reset_timer": {
-        "name": "Reset timer",
-        "description": "Resets charging timer",
-        "fields": {
-          "device_id": {
-            "name": "Charger",
-            "description": "Target charger"
-          }
+      }
+    },
+    "stop_charging": {
+      "name": "Stop charging",
+      "description": "Stops the charging process",
+      "fields": {
+        "device_id": {
+          "name": "Charger",
+          "description": "Target charger"
         }
-      },
-      "request_weekly_schedule": {
-        "name": "Request weekly schedule",
-        "description": "Returns weekly schedule",
-        "fields": {
-          "device_id": {
-            "name": "Charger",
-            "description": "Target charger"
-          }
+      }
+    },
+    "set_timer": {
+      "name": "Set timer",
+      "description": "Sets charging timer",
+      "fields": {
+        "device_id": {
+          "name": "Charger",
+          "description": "Target charger"
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "Time to start charging"
+        },
+        "end_time": {
+          "name": "End time",
+          "description": "Time to end charging"
         }
-      },
-      "set_maximum_monthly_consumption": {
-        "name": "Set maximum monthly consumption",
-        "description": "Sets limit to maximum monthly consumption",
-        "fields": {
-          "device_id": {
-            "name": "Charger",
-            "description": "Target charger"
-          },
-          "maximum_consumption": {
-            "name": "Maximum consumption",
-            "description": "Limit value for maximum monthly consumption"
-          }
+      }
+    },
+    "set_weekly_schedule": {
+      "name": "Set Schedule",
+      "description": "Sets charging schedule",
+      "fields": {
+        "device_id": {
+          "name": "Charger",
+          "description": "Target charger"
+        },
+        "sunday": {
+          "name": "Sunday",
+          "description": "Toggle Sunday"
+        },
+        "monday": {
+          "name": "Monday",
+          "description": "Toggle Monday"
+        },
+        "tuesday": {
+          "name": "Tuesday",
+          "description": "Toggle Tuesday"
+        },
+        "wednesday": {
+          "name": "Wednesday",
+          "description": "Toggle Wednesday"
+        },
+        "thursday": {
+          "name": "Thursday",
+          "description": "Toggle Thursday"
+        },
+        "friday": {
+          "name": "Friday",
+          "description": "Toggle Friday"
+        },
+        "saturday": {
+          "name": "Saturday",
+          "description": "Toggle Saturday"
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "Time to start charging"
+        },
+        "end_time": {
+          "name": "End time",
+          "description": "Time to end charging"
         }
-      },
-      "set_maximum_session_consumption": {
-        "name": "Set maximum session consumption",
-        "description": "Sets limit to maximum session consumption",
-        "fields": {
-          "device_id": {
-            "name": "Charger",
-            "description": "Target charger"
-          },
-          "maximum_consumption": {
-            "name": "Maximum consumption",
-            "description": "Limit value for maximum session consumption"
-          }
+      }
+    },
+    "reset_timer": {
+      "name": "Reset timer",
+      "description": "Resets charging timer",
+      "fields": {
+        "device_id": {
+          "name": "Charger",
+          "description": "Target charger"
         }
-      },
-      "set_max_current": {
-        "name": "Set max current",
-        "description": "Sets the maximum charging current",
-        "fields": {
-          "device_id": {
-            "name": "Charger",
-            "description": "Target charger"
-          },
-          "max_current": {
-            "name": "Max current",
-            "description": "Maximum charging current in amps (6–32A)"
-          }
+      }
+    },
+    "request_weekly_schedule": {
+      "name": "Request weekly schedule",
+      "description": "Returns weekly schedule",
+      "fields": {
+        "device_id": {
+          "name": "Charger",
+          "description": "Target charger"
         }
-      },
-      "set_dlb_config": {
-        "name": "Set DLB config",
-        "description": "Configures DLB mode, Extreme Mode, and Night Mode. All fields are optional — only supplied fields are changed.",
-        "fields": {
-          "device_id": {
-            "name": "Charger",
-            "description": "Target charger"
-          },
-          "dlb_enabled": {
-            "name": "PV Dynamic Load Balance",
-            "description": "Master toggle for the entire DLB feature. Mirrors the 'PV Dynamic Load Balance' switch in the Z-Box app."
-          },
-          "dlb_mode": {
-            "name": "DLB mode",
-            "description": "Primary DLB operating mode (dlb_box, full_speed, hybrid, pure_pv)"
-          },
-          "hybrid_current": {
-            "name": "Hybrid current limit",
-            "description": "Current limit in amps when DLB mode is Hybrid (6–32A)"
-          },
-          "extreme_mode": {
-            "name": "Extreme mode",
-            "description": "Reduce or stop charging when home load is high"
-          },
-          "night_mode": {
-            "name": "Night mode",
-            "description": "Enable full-speed charging during a nightly window"
-          },
-          "night_start": {
-            "name": "Night mode start hour",
-            "description": "Hour to begin Night Mode (0–23, 24h clock)"
-          },
-          "night_end": {
-            "name": "Night mode end hour",
-            "description": "Hour to end Night Mode (0–23, 24h clock)"
-          },
-          "anti_overload": {
-            "name": "Anti Overload",
-            "description": "Enable or disable Anti Overload Mode"
-          },
-          "anti_overload_value": {
-            "name": "Anti Overload threshold",
-            "description": "Threshold value (1–99) used when Anti Overload is enabled (default 63)"
-          }
+      }
+    },
+    "set_maximum_monthly_consumption": {
+      "name": "Set maximum monthly consumption",
+      "description": "Sets limit to maximum monthly consumption",
+      "fields": {
+        "device_id": {
+          "name": "Charger",
+          "description": "Target charger"
+        },
+        "maximum_consumption": {
+          "name": "Maximum consumption",
+          "description": "Limit value for maximum monthly consumption"
+        }
+      }
+    },
+    "set_maximum_session_consumption": {
+      "name": "Set maximum session consumption",
+      "description": "Sets limit to maximum session consumption",
+      "fields": {
+        "device_id": {
+          "name": "Charger",
+          "description": "Target charger"
+        },
+        "maximum_consumption": {
+          "name": "Maximum consumption",
+          "description": "Limit value for maximum session consumption"
+        }
+      }
+    },
+    "set_max_current": {
+      "name": "Set max current",
+      "description": "Sets the maximum charging current",
+      "fields": {
+        "device_id": {
+          "name": "Charger",
+          "description": "Target charger"
+        },
+        "max_current": {
+          "name": "Max current",
+          "description": "Maximum charging current in amps (6–32A)"
+        }
+      }
+    },
+    "set_dlb_config": {
+      "name": "Set DLB config",
+      "description": "Configures DLB mode, Extreme Mode, and Night Mode. All fields are optional — only supplied fields are changed.",
+      "fields": {
+        "device_id": {
+          "name": "Charger",
+          "description": "Target charger"
+        },
+        "dlb_enabled": {
+          "name": "PV Dynamic Load Balance",
+          "description": "Master toggle for the entire DLB feature. Mirrors the 'PV Dynamic Load Balance' switch in the Z-Box app."
+        },
+        "dlb_mode": {
+          "name": "DLB mode",
+          "description": "Primary DLB operating mode (dlb_box, full_speed, hybrid, pure_pv)"
+        },
+        "hybrid_current": {
+          "name": "Hybrid current limit",
+          "description": "Current limit in amps when DLB mode is Hybrid (6–32A)"
+        },
+        "extreme_mode": {
+          "name": "Extreme mode",
+          "description": "Reduce or stop charging when home load is high"
+        },
+        "night_mode": {
+          "name": "Night mode",
+          "description": "Enable full-speed charging during a nightly window"
+        },
+        "night_start": {
+          "name": "Night mode start hour",
+          "description": "Hour to begin Night Mode (0–23, 24h clock)"
+        },
+        "night_end": {
+          "name": "Night mode end hour",
+          "description": "Hour to end Night Mode (0–23, 24h clock)"
+        },
+        "anti_overload": {
+          "name": "Anti Overload",
+          "description": "Enable or disable Anti Overload Mode"
+        },
+        "anti_overload_value": {
+          "name": "Anti Overload threshold",
+          "description": "Threshold value (1–99) used when Anti Overload is enabled (default 63)"
         }
       }
     }
   }
+}

@@ -1,387 +1,442 @@
 {
-    "title": "Beny Wifi",
-    "entity": {
-      "sensor": {
-        "charger_state": {
-          "name": "Latausaseman tila",
-          "state": {
-            "abnormal": "vika",
-            "unplugged": "ei kytketty",
-            "standby": "valmiustila",
-            "starting": "aloittaa",
-            "unknown": "tuntematon",
-            "waiting": "odottaa",
-            "charging": "lataa"
-          }
-        },
-        "power": {
-          "name": "Teho"
-        },
-        "voltage1": {
-          "name": "Jännite L1"
-        },
-        "voltage2": {
-          "name": "Jännite L2"
-        },
-        "voltage3": {
-          "name": "Jännite L3"
-        },
-        "current1": {
-          "name": "Virta L1"
-        },
-        "current2": {
-          "name": "Virta L2"
-        },
-        "current3": {
-          "name": "Virta L3"
-        },
-        "grid_power": {
-          "name": "DLB Verkon teho"
-        },
-        "ev_power": {
-          "name": "DLB EV teho"
-        },
-        "house_power": {
-          "name": "DLB Asunnon teho"
-        },
-        "solar_power": {
-          "name": "DLB Aurinkopaneeli teho"
-        },
-        "max_current": {
-          "name": "Maksimi virta"
-        },
-        "total_kwh": {
-          "name": "Ladattu yhteensä"
-        },
-        "temperature": {
-          "name": "Lämpötila"
-        },
-        "maximum_session_consumption": {
-          "name": "Session latausraja"
-        },
-        "timer_start": {
-          "name": "Ajastuksen alku",
-          "state": {
-            "not_set": "ei asetettu"
-          }
-        },
-        "timer_end": {
-          "name": "Ajastuksen loppu",
-          "state": {
-            "not_set": "ei asetettu"
-          }
+  "title": "Beny Wifi",
+  "entity": {
+    "sensor": {
+      "charger_state": {
+        "name": "Latausaseman tila",
+        "state": {
+          "abnormal": "vika",
+          "unplugged": "ei kytketty",
+          "standby": "valmiustila",
+          "starting": "aloittaa",
+          "unknown": "tuntematon",
+          "waiting": "odottaa",
+          "charging": "lataa"
         }
       },
-      "number": {
-        "max_current_control": {
-          "name": "Maksimi virran säätö"
-        },
-        "hybrid_current": {
-          "name": "Hybridi virtaraja"
-        },
-        "night_start_hour": {
-          "name": "Yötilan alkutunti"
-        },
-        "night_end_hour": {
-          "name": "Yötilan lopetustunti"
-        },
-        "anti_overload_value": {
-          "name": "Ylikuormitussuojan kynnysarvo"
+      "power": {
+        "name": "Teho"
+      },
+      "voltage1": {
+        "name": "Jännite L1"
+      },
+      "voltage2": {
+        "name": "Jännite L2"
+      },
+      "voltage3": {
+        "name": "Jännite L3"
+      },
+      "current1": {
+        "name": "Virta L1"
+      },
+      "current2": {
+        "name": "Virta L2"
+      },
+      "current3": {
+        "name": "Virta L3"
+      },
+      "grid_power": {
+        "name": "DLB Verkon teho"
+      },
+      "ev_power": {
+        "name": "DLB EV teho"
+      },
+      "house_power": {
+        "name": "DLB Asunnon teho"
+      },
+      "solar_power": {
+        "name": "DLB Aurinkopaneeli teho"
+      },
+      "max_current": {
+        "name": "Maksimi virta"
+      },
+      "total_kwh": {
+        "name": "Ladattu yhteensä"
+      },
+      "temperature": {
+        "name": "Lämpötila"
+      },
+      "maximum_session_consumption": {
+        "name": "Session latausraja"
+      },
+      "timer_start": {
+        "name": "Ajastuksen alku",
+        "state": {
+          "not_set": "ei asetettu"
         }
       },
-      "button": {
-        "send_max_current": {
-          "name": "Lähetä maksimi virta"
-        },
-        "start_charging": {
-          "name": "Aloita lataus"
-        },
-        "stop_charging": {
-          "name": "Pysäytä lataus"
-        }
-      },
-      "select": {
-        "dlb_mode": {
-          "name": "DLB-tila",
-          "state": {
-            "pure_pv":    "Pelkkä aurinkosähkö",
-            "hybrid":     "Hybridi",
-            "full_speed": "Täysi teho",
-            "dlb_box":    "DLB-laite"
-          }
-        }
-      },
-      "switch": {
-        "dlb_enabled": {
-          "name": "PV dynaaminen kuormantasaus"
-        },
-        "extreme_mode": {
-          "name": "Äärimmäinen tila"
-        },
-        "night_mode": {
-          "name": "Yötila"
-        },
-        "anti_overload": {
-          "name": "Ylikuormitussuoja"
+      "timer_end": {
+        "name": "Ajastuksen loppu",
+        "state": {
+          "not_set": "ei asetettu"
         }
       }
     },
-    "config": {
-      "abort": {
-        "reconfigure_successful": "Uudelleenmääritys tehtiin onnistuneesti"
+    "number": {
+      "max_current_control": {
+        "name": "Maksimi virran säätö"
       },
-      "step": {
-        "user": {
-          "title": "Lisää latausasema",
-          "description": "Beny Wifi integraation konfigurointi.",
-          "data": {
-            "ip_address": "IP-osoite (jos laite ei löydy sarjanumerolla)",
-            "port": "Portti",
-            "serial": "Sarjanumero",
-            "pin": "PIN-koodi",
-            "update_interval": "Päivitysväli",
-            "max_current_min": "Virransäädön minimi (A)",
-            "max_current_max": "Virransäädön maksimi (A)",
-            "dlb": "DLB-moduuli asennettu?"
-          },
-          "data_description": {
-            "max_current_min": "Latausvirran säätimen alaraja (oletus 6A)",
-            "max_current_max": "Latausvirran säätimen yläraja (oletus 32A)",
-            "dlb": "Ota käyttöön vain, jos latausasemaan on liitetty valinnainen DLB-moduuli"
-          }
-        },
-        "reconfigure": {
-          "title": "Muokkaa latausasemaa",
-          "description": "Päivitä Beny Wifi integraation asetukset.",
-          "data": {
-            "ip_address": "IP-osoite (jos laite ei löydy sarjanumerolla)",
-            "port": "Portti",
-            "serial": "Sarjanumero",
-            "pin": "PIN-koodi",
-            "update_interval": "Päivitysväli",
-            "max_current_min": "Virransäädön minimi (A)",
-            "max_current_max": "Virransäädön maksimi (A)",
-            "dlb": "DLB-moduuli asennettu?"
-          },
-          "data_description": {
-            "max_current_min": "Latausvirran säätimen alaraja (oletus 6A)",
-            "max_current_max": "Latausvirran säätimen yläraja (oletus 32A)",
-            "dlb": "Ota käyttöön vain, jos latausasemaan on liitetty valinnainen DLB-moduuli"
-          }
-        }
+      "hybrid_current": {
+        "name": "Hybridi virtaraja"
       },
-      "error": {
-        "device_already_configured": "Laite on jo lisätty.",
-        "cannot_communicate": "Laitteen kanssa kommunikointi epäonnistui. (Katso loki-tiedosto)",
-        "cannot_connect": "Laitteeseen ei voida yhdistää. Tarkasta IP-osoite ja portti. (Katso loki-tiedosto)",
-        "pin_not_numeric": "Pin-koodin tulee olla numeerinen",
-        "pin_length_invalid": "Pin-koodin tulee olla 6 merkkiä pitkä",
-        "serial_not_numeric": "Sarjanumeron tulee olla numeerinen",
-        "serial_length_invalid": "Sarjanumeron tulee olla 9 merkkiä pitkä",
-        "no_response_timeout": "Laite ei vastannut. Tarkasta sarjanumero ja pin-koodi",
-        "cannot_resolve_ip": "Laitteen IP-osoitetta ei voi selvittää automaattisesti. Voit yrittää asettaa sen manuaalisesti"
+      "night_start_hour": {
+        "name": "Yötilan alkutunti"
+      },
+      "night_end_hour": {
+        "name": "Yötilan lopetustunti"
       }
     },
-    "options": {
-      "step": {
-        "init": {
-          "title": "Valinnat",
-          "description": "Päivitä Beny Wifi konfiguraatiota."
-        }
-      }
-    },
-    "services": {
+    "button": {
+      "send_max_current": {
+        "name": "Lähetä maksimi virta"
+      },
       "start_charging": {
-        "name": "Aloita lataus",
-        "description": "Aloittaa lataamisen",
-        "fields": {
-          "device_id": {
-            "name": "Latausasema",
-            "description": "Kohteena toimiva latausasema"
-          }
-        }
+        "name": "Aloita lataus"
       },
       "stop_charging": {
-        "name": "Pysäytä lataaminen",
-        "description": "Pysäyttää lataamisen",
-        "fields": {
-          "device_id": {
-            "name": "Latausasema",
-            "description": "Kohteena toimiva latausasema"
+        "name": "Pysäytä lataus"
+      }
+    },
+    "select": {
+      "dlb_mode": {
+        "name": "DLB-tila",
+        "state": {
+          "pure_pv": "Pelkkä aurinkosähkö",
+          "hybrid": "Hybridi",
+          "full_speed": "Täysi teho",
+          "dlb_box": "DLB-laite"
+        }
+      }
+    },
+    "switch": {
+      "dlb_enabled": {
+        "name": "PV dynaaminen kuormantasaus"
+      },
+      "extreme_mode": {
+        "name": "Äärimmäinen tila"
+      },
+      "night_mode": {
+        "name": "Yötila"
+      }
+    }
+  },
+  "config": {
+    "abort": {
+      "reconfigure_successful": "Uudelleenmääritys tehtiin onnistuneesti",
+      "already_configured": "Tämä laite (Sarjanumero: {serial}) on jo lisätty!"
+    },
+    "step": {
+      "user": {
+        "title": "Lisää latausasema",
+        "description": "Beny Wifi integraation konfigurointi.",
+        "sections": {
+          "section_connection": {
+            "name": "Yhteys",
+            "description": "Yhdistäminen latauslaitteeseen",
+            "data": {
+              "ip_address": "IP-osoite (jos laite ei löydy sarjanumerolla)",
+              "port": "Portti",
+              "update_interval": "Päivitysväli"
+            }
+          },
+          "section_device": {
+            "name": "Latauslaite",
+            "description": "Laitekohtaiset asetukset",
+            "data": {
+              "serial": "Sarjanumero",
+              "pin": "PIN-koodi"
+            }
+          },
+          "section_current_limits": {
+            "name": "Latausvirta",
+            "description": "Määritä turvalliset rajat latausvirralle",
+            "data": {
+              "max_current_min": "Virransäädön minimi (A)",
+              "max_current_max": "Virransäädön maksimi (A)"
+            },
+            "data_description": {
+              "max_current_min": "Latausvirran säätimen alaraja (oletus 6A)",
+              "max_current_max": "Latausvirran säätimen yläraja (oletus 32A)"
+            }
+          },
+          "section_dlb": {
+            "name": "DLB",
+            "description": "Dynaaminen kuormantasaus",
+            "data": {
+              "dlb": "DLB-moduuli asennettu?",
+              "anti_overload_enabled": "Ota ylikuormitussuoja käyttöön",
+              "anti_overload_threshold": "Ylikuormitussuojan kynnysarvo"
+            },
+            "data_description": {
+              "dlb": "Ota käyttöön vain, jos latausasemaan on liitetty valinnainen DLB-moduuli",
+              "anti_overload_enabled": "Koskee vain DLB:n ollessa käytössä. Rajoittaa verkosta otettavaa tehoa alla olevan kynnysarvon avulla",
+              "anti_overload_threshold": "Verkosta otettavan tehon raja (1–99). Oletus on 63. Käytetään vain, kun ylikuormitussuoja on käytössä"
+            }
           }
         }
       },
-      "set_timer": {
-        "name": "Aseta ajastus",
-        "description": "Asettaa ajastimen",
-        "fields": {
-          "device_id": {
-            "name": "Latausasema",
-            "description": "Kohteena toimiva latausasema"
+      "reconfigure": {
+        "title": "Muokkaa latausasemaa",
+        "description": "Päivitä Beny Wifi integraation asetukset.",
+        "sections": {
+          "section_connection": {
+            "name": "Yhteys",
+            "description": "Yhdistäminen latauslaitteeseen",
+            "data": {
+              "ip_address": "IP-osoite (jos laite ei löydy sarjanumerolla)",
+              "port": "Portti",
+              "update_interval": "Päivitysväli"
+            }
           },
-          "start_time": {
-            "name": "Aloitusaika",
-            "description": "Aika, jolloin lataaminen aloitetaan"
+          "section_device": {
+            "name": "Latauslaite",
+            "description": "Laitekohtaiset asetukset",
+            "data": {
+              "serial": "Sarjanumero",
+              "pin": "PIN-koodi"
+            }
           },
-          "end_time": {
-            "name": "Lopetusaika",
-            "description": "Aika, jolloin lataaminen lopetetaan"
+          "section_current_limits": {
+            "name": "Latausvirta",
+            "description": "Määritä turvalliset rajat latausvirralle",
+            "data": {
+              "max_current_min": "Virransäädön minimi (A)",
+              "max_current_max": "Virransäädön maksimi (A)"
+            },
+            "data_description": {
+              "max_current_min": "Latausvirran säätimen alaraja (oletus 6A)",
+              "max_current_max": "Latausvirran säätimen yläraja (oletus 32A)"
+            }
+          },
+          "section_dlb": {
+            "name": "DLB",
+            "description": "Dynaaminen kuormantasaus",
+            "data": {
+              "dlb": "DLB-moduuli asennettu?",
+              "anti_overload_enabled": "Ota ylikuormitussuoja käyttöön",
+              "anti_overload_threshold": "Ylikuormitussuojan kynnysarvo"
+            },
+            "data_description": {
+              "dlb": "Ota käyttöön vain, jos latausasemaan on liitetty valinnainen DLB-moduuli",
+              "anti_overload_enabled": "Koskee vain DLB:n ollessa käytössä. Rajoittaa verkosta otettavaa tehoa alla olevan kynnysarvon avulla",
+              "anti_overload_threshold": "Verkosta otettavan tehon raja (1–99). Oletus on 63. Käytetään vain, kun ylikuormitussuoja on käytössä"
+            }
           }
         }
-      },
-      "set_weekly_schedule": {
-        "name": "Aseta viikkoajastin",
-        "description": "Asettaa päiväkohtaisen latausajastuksen",
-        "fields": {
-          "device_id": {
-            "name": "Latausasema",
-            "description": "Kohteena toimiva latausasema"
-          },
-          "sunday": {
-            "name": "Sunnuntai",
-            "description": "Asettaa sunnuntain ajastuksen"
-          },
-          "monday": {
-            "name": "Maanantai",
-            "description": "Asettaa maanantain ajastuksen"
-          },
-          "tuesday": {
-            "name": "Tiistai",
-            "description": "Asettaa tiistain ajastuksen"
-          },
-          "wednesday": {
-            "name": "Keskiviikko",
-            "description": "Asettaa keskiviikon ajastuksen"
-          },
-          "thursday": {
-            "name": "Torstai",
-            "description": "Asettaa torstain ajastuksen"
-          },
-          "friday": {
-            "name": "Perjantai",
-            "description": "Asettaa perjantain ajastuksen"
-          },
-          "saturday": {
-            "name": "Lauantai",
-            "description": "Asettaa lauantain ajastuksen"
-          },
-          "start_time": {
-            "name": "Aloitusaika",
-            "description": "Aika, jolloin lataaminen aloitetaan"
-          },
-          "end_time": {
-            "name": "Lopetusaika",
-            "description": "Aika, jolloin lataaminen lopetetaan"
-          }
+      }
+    },
+    "error": {
+      "cannot_communicate": "Laitteen kanssa kommunikointi epäonnistui. (Katso loki-tiedosto)",
+      "cannot_connect": "Laitteeseen ei voida yhdistää. Tarkasta IP-osoite ja portti. (Katso loki-tiedosto)",
+      "pin_not_numeric": "Pin-koodin tulee olla numeerinen",
+      "wrong_pin": "Pin-koodia ei hyväksytty, tarkasta pin-koodi",
+      "pin_length_invalid": "Pin-koodin tulee olla 6 merkkiä pitkä",
+      "serial_not_numeric": "Sarjanumeron tulee olla numeerinen",
+      "serial_length_invalid": "Sarjanumeron tulee olla 9 merkkiä pitkä",
+      "no_response_timeout": "Laite ei vastannut. Tarkasta sarjanumero ja pin-koodi",
+      "cannot_resolve_ip": "Laitteen IP-osoitetta ei voi selvittää automaattisesti. Voit yrittää asettaa sen manuaalisesti"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Valinnat",
+        "description": "Päivitä Beny Wifi konfiguraatiota."
+      }
+    }
+  },
+  "services": {
+    "start_charging": {
+      "name": "Aloita lataus",
+      "description": "Aloittaa lataamisen",
+      "fields": {
+        "device_id": {
+          "name": "Latausasema",
+          "description": "Kohteena toimiva latausasema"
         }
-      },
-      "reset_timer": {
-        "name": "Nollaa ajastin",
-        "description": "Nollaa latausajastimen",
-        "fields": {
-          "device_id": {
-            "name": "Latausasema",
-            "description": "Kohteena toimiva latausasema"
-          }
+      }
+    },
+    "stop_charging": {
+      "name": "Pysäytä lataaminen",
+      "description": "Pysäyttää lataamisen",
+      "fields": {
+        "device_id": {
+          "name": "Latausasema",
+          "description": "Kohteena toimiva latausasema"
         }
-      },
-      "request_weekly_schedule": {
-        "name": "Pyydä viikkoajastukset",
-        "description": "Palauttaa laturin viikkoajastukset",
-        "fields": {
-          "device_id": {
-            "name": "Latausasema",
-            "description": "Kohteena toimiva latausasema"
-          }
+      }
+    },
+    "set_timer": {
+      "name": "Aseta ajastus",
+      "description": "Asettaa ajastimen",
+      "fields": {
+        "device_id": {
+          "name": "Latausasema",
+          "description": "Kohteena toimiva latausasema"
+        },
+        "start_time": {
+          "name": "Aloitusaika",
+          "description": "Aika, jolloin lataaminen aloitetaan"
+        },
+        "end_time": {
+          "name": "Lopetusaika",
+          "description": "Aika, jolloin lataaminen lopetetaan"
         }
-      },
-      "set_maximum_monthly_consumption": {
-        "name": "Aseta kuukausittainen latausraja",
-        "description": "Asettaa kuukausittaisen latausrajan",
-        "fields": {
-          "device_id": {
-            "name": "Latausasema",
-            "description": "Kohteena toimiva latausasema"
-          },
-          "maximum_consumption": {
-            "name": "Latausraja",
-            "description": "Latausraja kilowattitunteina"
-          }
+      }
+    },
+    "set_weekly_schedule": {
+      "name": "Aseta viikkoajastin",
+      "description": "Asettaa päiväkohtaisen latausajastuksen",
+      "fields": {
+        "device_id": {
+          "name": "Latausasema",
+          "description": "Kohteena toimiva latausasema"
+        },
+        "sunday": {
+          "name": "Sunnuntai",
+          "description": "Asettaa sunnuntain ajastuksen"
+        },
+        "monday": {
+          "name": "Maanantai",
+          "description": "Asettaa maanantain ajastuksen"
+        },
+        "tuesday": {
+          "name": "Tiistai",
+          "description": "Asettaa tiistain ajastuksen"
+        },
+        "wednesday": {
+          "name": "Keskiviikko",
+          "description": "Asettaa keskiviikon ajastuksen"
+        },
+        "thursday": {
+          "name": "Torstai",
+          "description": "Asettaa torstain ajastuksen"
+        },
+        "friday": {
+          "name": "Perjantai",
+          "description": "Asettaa perjantain ajastuksen"
+        },
+        "saturday": {
+          "name": "Lauantai",
+          "description": "Asettaa lauantain ajastuksen"
+        },
+        "start_time": {
+          "name": "Aloitusaika",
+          "description": "Aika, jolloin lataaminen aloitetaan"
+        },
+        "end_time": {
+          "name": "Lopetusaika",
+          "description": "Aika, jolloin lataaminen lopetetaan"
         }
-      },
-      "set_maximum_session_consumption": {
-        "name": "Aseta session latausraja",
-        "description": "Asettaa session latausrajan",
-        "fields": {
-          "device_id": {
-            "name": "Latausasema",
-            "description": "Kohteena toimiva latausasema"
-          },
-          "maximum_consumption": {
-            "name": "Latausraja",
-            "description": "Latausraja kilowattitunteina"
-          }
+      }
+    },
+    "reset_timer": {
+      "name": "Nollaa ajastin",
+      "description": "Nollaa latausajastimen",
+      "fields": {
+        "device_id": {
+          "name": "Latausasema",
+          "description": "Kohteena toimiva latausasema"
         }
-      },
-      "set_max_current": {
-        "name": "Aseta maksimi virta",
-        "description": "Asettaa maksimi latausvirran",
-        "fields": {
-          "device_id": {
-            "name": "Latausasema",
-            "description": "Kohteena toimiva latausasema"
-          },
-          "max_current": {
-            "name": "Maksimi virta",
-            "description": "Maksimi latausvirta ampeereissa (6–32A)"
-          }
+      }
+    },
+    "request_weekly_schedule": {
+      "name": "Pyydä viikkoajastukset",
+      "description": "Palauttaa laturin viikkoajastukset",
+      "fields": {
+        "device_id": {
+          "name": "Latausasema",
+          "description": "Kohteena toimiva latausasema"
         }
-      },
-      "set_dlb_config": {
-        "name": "Aseta DLB-asetukset",
-        "description": "Määrittää DLB-tilan, äärimmäisen tilan ja yötilan. Kaikki kentät ovat valinnaisia — vain annetut kentät muutetaan.",
-        "fields": {
-          "device_id": {
-            "name": "Latausasema",
-            "description": "Kohteena toimiva latausasema"
-          },
-          "dlb_enabled": {
-            "name": "PV dynaaminen kuormantasaus",
-            "description": "Pääkytkin koko DLB-toiminnolle. Vastaa Z-Box-sovelluksen 'PV Dynamic Load Balance' -kytkintä."
-          },
-          "dlb_mode": {
-            "name": "DLB-tila",
-            "description": "DLB-toimintatila (dlb_box, full_speed, hybrid, pure_pv)"
-          },
-          "hybrid_current": {
-            "name": "Hybridi virtaraja",
-            "description": "Virtaraja ampeereissa hybriditilassa (6–32A)"
-          },
-          "extreme_mode": {
-            "name": "Äärimmäinen tila",
-            "description": "Vähennä tai pysäytä lataus, kun kodin kuorma on suuri"
-          },
-          "night_mode": {
-            "name": "Yötila",
-            "description": "Ota käyttöön täystehoinen lataus yöaikaikkunan aikana"
-          },
-          "night_start": {
-            "name": "Yötilan alkutunti",
-            "description": "Tunti, jolloin yötila alkaa (0–23, 24h-kello)"
-          },
-          "night_end": {
-            "name": "Yötilan lopetustunti",
-            "description": "Tunti, jolloin yötila päättyy (0–23, 24h-kello)"
-          },
-          "anti_overload": {
-            "name": "Ylikuormitussuoja",
-            "description": "Ota ylikuormitussuoja käyttöön tai poista se käytöstä"
-          },
-          "anti_overload_value": {
-            "name": "Ylikuormitussuojan kynnysarvo",
-            "description": "Kynnysarvo (1–99), jota käytetään ylikuormitussuojan ollessa käytössä (oletus 63)"
-          }
+      }
+    },
+    "set_maximum_monthly_consumption": {
+      "name": "Aseta kuukausittainen latausraja",
+      "description": "Asettaa kuukausittaisen latausrajan",
+      "fields": {
+        "device_id": {
+          "name": "Latausasema",
+          "description": "Kohteena toimiva latausasema"
+        },
+        "maximum_consumption": {
+          "name": "Latausraja",
+          "description": "Latausraja kilowattitunteina"
+        }
+      }
+    },
+    "set_maximum_session_consumption": {
+      "name": "Aseta session latausraja",
+      "description": "Asettaa session latausrajan",
+      "fields": {
+        "device_id": {
+          "name": "Latausasema",
+          "description": "Kohteena toimiva latausasema"
+        },
+        "maximum_consumption": {
+          "name": "Latausraja",
+          "description": "Latausraja kilowattitunteina"
+        }
+      }
+    },
+    "set_max_current": {
+      "name": "Aseta maksimi virta",
+      "description": "Asettaa maksimi latausvirran",
+      "fields": {
+        "device_id": {
+          "name": "Latausasema",
+          "description": "Kohteena toimiva latausasema"
+        },
+        "max_current": {
+          "name": "Maksimi virta",
+          "description": "Maksimi latausvirta ampeereissa (6–32A)"
+        }
+      }
+    },
+    "set_dlb_config": {
+      "name": "Aseta DLB-asetukset",
+      "description": "Määrittää DLB-tilan, äärimmäisen tilan ja yötilan. Kaikki kentät ovat valinnaisia — vain annetut kentät muutetaan.",
+      "fields": {
+        "device_id": {
+          "name": "Latausasema",
+          "description": "Kohteena toimiva latausasema"
+        },
+        "dlb_enabled": {
+          "name": "PV dynaaminen kuormantasaus",
+          "description": "Pääkytkin koko DLB-toiminnolle. Vastaa Z-Box-sovelluksen 'PV Dynamic Load Balance' -kytkintä."
+        },
+        "dlb_mode": {
+          "name": "DLB-tila",
+          "description": "DLB-toimintatila (dlb_box, full_speed, hybrid, pure_pv)"
+        },
+        "hybrid_current": {
+          "name": "Hybridi virtaraja",
+          "description": "Virtaraja ampeereissa hybriditilassa (6–32A)"
+        },
+        "extreme_mode": {
+          "name": "Äärimmäinen tila",
+          "description": "Vähennä tai pysäytä lataus, kun kodin kuorma on suuri"
+        },
+        "night_mode": {
+          "name": "Yötila",
+          "description": "Ota käyttöön täystehoinen lataus yöaikaikkunan aikana"
+        },
+        "night_start": {
+          "name": "Yötilan alkutunti",
+          "description": "Tunti, jolloin yötila alkaa (0–23, 24h-kello)"
+        },
+        "night_end": {
+          "name": "Yötilan lopetustunti",
+          "description": "Tunti, jolloin yötila päättyy (0–23, 24h-kello)"
+        },
+        "anti_overload": {
+          "name": "Ylikuormitussuoja",
+          "description": "Ota ylikuormitussuoja käyttöön tai poista se käytöstä"
+        },
+        "anti_overload_value": {
+          "name": "Ylikuormitussuojan kynnysarvo",
+          "description": "Kynnysarvo (1–99), jota käytetään ylikuormitussuojan ollessa käytössä (oletus 63)"
         }
       }
     }
   }
+}
