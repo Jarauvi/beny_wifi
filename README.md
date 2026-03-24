@@ -22,8 +22,9 @@ This integration mimics the **ZBox** mobile app's communication protocol. Any ch
 
 > [!IMPORTANT]
 > **Version 1.0.0** introduces Home Assistant's native entity naming instead of fixed *[serial]_[key]* format. Existing entity names should remain intact, but if you update from very old version, new entities use new naming logic. If you want to update all entity names to new standard, you can do this by opening created device -> under 3 dots at the top right corner, select "**Recreate entity IDs**"
->
-> **Since version 0.8.5**, the integration requires the user to input the **main fuse** value when using DLB (Dynamic Load Balancing) modes. Ensure you set the correct value for your electrical system.
+> 
+> **Note that in version 1.0.0 DLB Overload Protection value (main fuse) has been moved** from number entity to config option. This is done to make sure that overload protection has been set to correct value before DLB functions are used. By default it is very small just in case - make sure to change it to proper one!
+
 
 > [!CAUTION]
 > This integration is a community project and is **not** affiliated with, endorsed by, or supported by ZJBeny or any other supported brands. **Use at your own risk**.
