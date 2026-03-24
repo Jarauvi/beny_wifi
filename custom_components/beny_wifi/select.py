@@ -1,12 +1,22 @@
 """Select entities for Beny Wifi DLB mode control."""
 
 import logging
-
 from homeassistant.components.select import SelectEntity
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DLB, DOMAIN, DLB_MODE, DLB_MODE_OPTIONS, MODEL, SERIAL
+from .const import (
+    DLB, 
+    DOMAIN, 
+    DLB_MODE, 
+    DLB_MODE_OPTIONS, 
+    MODEL, 
+    SERIAL,
+    SECTION_DEVICE,
+    SECTION_DLB,
+    get_device_id,
+    get_config_parameter,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,9 +29,9 @@ _MODE_TO_LABEL = {v: k for k, v in DLB_MODE_OPTIONS.items()}
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up select platform."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
-    device_id = config_entry.data[SERIAL]
-    device_model = config_entry.data[MODEL]
-    dlb = config_entry.data[DLB]
+    serial = get_config_parameter(config_entry, SECTION_DEVICE, SERIAL)
+    device_model = get_config_parameter(config_entry, SECTION_DEVICE, MODEL)
+    dlb = get_config_parameter(config_entry, SECTION_DLB, DLB)
 
     entities = []
 
@@ -29,7 +39,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         entities.append(
             BenyWifiDlbModeSelect(
                 coordinator, "dlb_mode",
-                device_id=device_id, device_model=device_model,
+                serial=serial, device_model=device_model,
             )
         )
 
@@ -40,26 +50,22 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class BenyWifiDlbModeSelect(CoordinatorEntity, SelectEntity):
     """Select entity to choose the primary DLB operating mode."""
 
-    def __init__(self, coordinator, key, device_id=None, device_model=None):
+    def __init__(self, coordinator, key, serial=None, device_model=None):
         """Initialize the select entity."""
         super().__init__(coordinator)
         self.coordinator = coordinator
         self.key = key
         self._attr_translation_key = key
-        self._device_id = device_id
+        self._serial = serial
         self._device_model = device_model
         self._attr_has_entity_name = True
         self._attr_icon = "mdi:solar-power"
         self._attr_options = list(DLB_MODE_OPTIONS.keys())
-        self.entity_id = f"select.{device_id}_{key}"
+        self._attr_unique_id = f"{serial}_{key}"
+        self._attr_suggested_object_id = key  
 
         # Optimistic label — set on user action, cleared on coordinator refresh
         self._optimistic_label: str | None = None
-
-    @property
-    def unique_id(self) -> str:
-        """Return unique ID."""
-        return f"{self._device_id}_{self.key}"
 
     @property
     def current_option(self) -> str:
@@ -99,7 +105,7 @@ class BenyWifiDlbModeSelect(CoordinatorEntity, SelectEntity):
             _LOGGER.error(f"Unknown DLB mode option: {option}")
             return
 
-        device_name = f"Beny Charger {self._device_id}"
+        device_name = get_device_id(self.hass, self._serial, self._device_model)
         await self.coordinator.async_set_dlb_config(device_name, dlb_mode=mode)
 
         # Snap the UI immediately — don't wait for next coordinator poll
@@ -110,9 +116,9 @@ class BenyWifiDlbModeSelect(CoordinatorEntity, SelectEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         return DeviceInfo(
-            identifiers={(DOMAIN, self._device_id)},
-            name=f"Beny Charger {self._device_id}",
+            identifiers={(DOMAIN, self._serial)},
+            name = get_device_id(self.hass, self._serial, self._device_model),
             manufacturer="ZJ Beny",
             model=self._device_model,
-            serial_number=self._device_id,
+            serial_number=self._serial,
         )

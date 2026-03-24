@@ -3,6 +3,7 @@ from enum import Enum  # noqa: D100
 import logging
 from typing import Final
 
+from homeassistant.helpers import entity_registry as er
 from homeassistant.const import Platform
 
 # Updated to include NUMBER, BUTTON, SELECT and SWITCH platforms
@@ -17,7 +18,7 @@ DLB = "dlb"
 
 SCAN_INTERVAL: Final = "update_interval"
 
-DEFAULT_SCAN_INTERVAL: Final = 30
+DEFAULT_SCAN_INTERVAL: Final = 10  # lowered from 30s — UDP round-trip is fast on a local network
 DEFAULT_PORT = 3333 # default listening port (at least for "BCP-AT1N-L)
 
 # Configurable max-current slider bounds
@@ -26,10 +27,23 @@ CONF_MAX_CURRENT_MAX: Final = "max_current_max"
 DEFAULT_MAX_CURRENT_MIN: Final = 6
 DEFAULT_MAX_CURRENT_MAX: Final = 32
 
+# Anti Overload config (stored in SECTION_DLB during setup)
+CONF_ANTI_OVERLOAD: Final = "anti_overload_enabled"
+CONF_ANTI_OVERLOAD_VALUE: Final = "anti_overload_threshold"
+DEFAULT_ANTI_OVERLOAD: Final = False
+DEFAULT_ANTI_OVERLOAD_VALUE: Final = 63  # 0x3f — matches charger default
+
 IP_ADDRESS = "ip_address"
 PORT = "port"
 CONF_SERIAL = "serial"
 CONF_PIN = "pin"
+CONF_NUMERIC_PIN = "numeric_pin"
+
+# Sections
+SECTION_CONNECTION: Final = "section_connection"
+SECTION_DEVICE: Final = "section_device"
+SECTION_CURRENT_LIMITS: Final = "section_current_limits"
+SECTION_DLB: Final = "section_dlb"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -518,3 +532,47 @@ class SERVER_MESSAGE(Enum):
             "anti_overload": slice(32, 34),
         }
     }
+    
+def get_device_id(hass, serial, model):
+    # returns device reference from device registry 
+    from homeassistant.helpers import device_registry as dr
+    dev_reg = dr.async_get(hass)
+    device = dev_reg.async_get_device(identifiers={(DOMAIN, serial)})
+    if device:
+        return device.name_by_user or device.name or f"Beny {model}"
+    else:
+        return f"Beny {model}"
+    
+def get_config_parameter(config_entry, section, key, fallback=""):
+    """Get a config parameter from either a ConfigEntry object or a dict."""
+    if not config_entry:
+        return fallback
+
+    if hasattr(config_entry, "data"):
+        data = config_entry.data
+    else:
+        data = config_entry
+
+    section_data = data.get(section)
+    if isinstance(section_data, dict):
+        if key in section_data:
+            return section_data[key]
+
+    return data.get(key, fallback)
+
+def get_entity_state_by_key(hass, config_entry, key, domain):
+    """Retrieve the state object of an entity based on its unique_id key."""
+    
+    serial = get_config_parameter(config_entry, SECTION_DEVICE, SERIAL, None)
+    if not serial:
+        return None
+
+    target_unique_id = f"{serial}_{key}"
+    ent_reg = er.async_get(hass)
+    entity_id = ent_reg.async_get_entity_id(domain, DOMAIN, target_unique_id)
+    
+    if not entity_id:
+        return None
+
+    # 4. Return the full State object
+    return hass.states.get(entity_id)

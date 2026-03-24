@@ -1,12 +1,20 @@
 """Switch entities for Beny Wifi."""
 
 import logging
-
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DLB, DOMAIN, MODEL, SERIAL
+from .const import (
+    DLB, 
+    DOMAIN, 
+    MODEL, 
+    SERIAL,
+    SECTION_DEVICE,
+    SECTION_DLB,
+    get_device_id,
+    get_config_parameter
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -14,9 +22,9 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up switch platform."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
-    device_id = config_entry.data[SERIAL]
-    device_model = config_entry.data[MODEL]
-    dlb = config_entry.data[DLB]
+    serial = get_config_parameter(config_entry, SECTION_DEVICE, SERIAL)
+    device_model = get_config_parameter(config_entry, SECTION_DEVICE, MODEL)
+    dlb = get_config_parameter(config_entry, SECTION_DLB, DLB)
 
     entities = []
 
@@ -25,25 +33,19 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             BenyWifiDlbEnabledSwitch(
                 coordinator,
                 "dlb_enabled",
-                device_id=device_id,
+                serial=serial,
                 device_model=device_model,
             ),
             BenyWifiExtremeModeSwitch(
                 coordinator,
                 "extreme_mode",
-                device_id=device_id,
+                serial=serial,
                 device_model=device_model,
             ),
             BenyWifiNightModeSwitch(
                 coordinator,
                 "night_mode",
-                device_id=device_id,
-                device_model=device_model,
-            ),
-            BenyWifiAntiOverloadSwitch(
-                coordinator,
-                "anti_overload",
-                device_id=device_id,
+                serial=serial,
                 device_model=device_model,
             ),
         ])
@@ -51,26 +53,21 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     if entities:
         async_add_entities(entities)
 
-
 class BenyWifiDlbSwitch(CoordinatorEntity, SwitchEntity):
     """Base class for DLB boolean switches."""
 
-    def __init__(self, coordinator, key, device_id=None, device_model=None):
+    def __init__(self, coordinator, key, serial=None, device_model=None):
         """Initialize the switch entity."""
         super().__init__(coordinator)
         self.coordinator = coordinator
         self.key = key
         self._attr_translation_key = key
-        self._device_id = device_id
+        self._serial = serial
         self._device_model = device_model
         self._attr_has_entity_name = True
-        self.entity_id = f"switch.{device_id}_{key}"
+        self._attr_unique_id = f"{serial}_{key}"
         self._optimistic_state: bool | None = None
-
-    @property
-    def unique_id(self) -> str:
-        """Return unique ID."""
-        return f"{self._device_id}_{self.key}"
+        self._attr_suggested_object_id = key  
 
     def _get_cached_byte(self, field: str) -> int:
         """Read a byte from the coordinator's DLB config cache."""
@@ -82,11 +79,11 @@ class BenyWifiDlbSwitch(CoordinatorEntity, SwitchEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         return DeviceInfo(
-            identifiers={(DOMAIN, self._device_id)},
-            name=f"Beny Charger {self._device_id}",
+            identifiers={(DOMAIN, self._serial)},
+            name = get_device_id(self.hass, self._serial, self._device_model),
             manufacturer="ZJ Beny",
             model=self._device_model,
-            serial_number=self._device_id,
+            serial_number=self._serial,
         )
 
 
@@ -98,9 +95,9 @@ class BenyWifiDlbEnabledSwitch(BenyWifiDlbSwitch):
     Confirmed via packet capture: byte[10] of SET_DLB_CONFIG flips 0x01↔0x00.
     """
 
-    def __init__(self, coordinator, key, device_id=None, device_model=None):
+    def __init__(self, coordinator, key, serial=None, device_model=None):
         """Initialize."""
-        super().__init__(coordinator, key, device_id, device_model)
+        super().__init__(coordinator, key, serial, device_model)
         self._attr_icon = "mdi:solar-power"
 
     @property
@@ -112,7 +109,7 @@ class BenyWifiDlbEnabledSwitch(BenyWifiDlbSwitch):
 
     async def async_turn_on(self, **kwargs) -> None:
         """Enable PV Dynamic Load Balance."""
-        device_name = f"Beny Charger {self._device_id}"
+        device_name = get_device_id(self.hass, self._serial, self._device_model)
         await self.coordinator.async_set_dlb_config(device_name, dlb_enabled=True)
         self._optimistic_state = True
         self.async_write_ha_state()
@@ -120,7 +117,7 @@ class BenyWifiDlbEnabledSwitch(BenyWifiDlbSwitch):
 
     async def async_turn_off(self, **kwargs) -> None:
         """Disable PV Dynamic Load Balance."""
-        device_name = f"Beny Charger {self._device_id}"
+        device_name = get_device_id(self.hass, self._serial, self._device_model)
         await self.coordinator.async_set_dlb_config(device_name, dlb_enabled=False)
         self._optimistic_state = False
         self.async_write_ha_state()
@@ -139,9 +136,9 @@ class BenyWifiExtremeModeSwitch(BenyWifiDlbSwitch):
     stopping charging entirely if grid headroom drops below ~10A.
     """
 
-    def __init__(self, coordinator, key, device_id=None, device_model=None):
+    def __init__(self, coordinator, key, serial=None, device_model=None):
         """Initialize."""
-        super().__init__(coordinator, key, device_id, device_model)
+        super().__init__(coordinator, key, serial, device_model)
         self._attr_icon = "mdi:lightning-bolt"
 
     @property
@@ -153,7 +150,7 @@ class BenyWifiExtremeModeSwitch(BenyWifiDlbSwitch):
 
     async def async_turn_on(self, **kwargs) -> None:
         """Enable Extreme Mode."""
-        device_name = f"Beny Charger {self._device_id}"
+        device_name = get_device_id(self.hass, self._serial, self._device_model)
         await self.coordinator.async_set_dlb_config(device_name, extreme_mode=True)
         self._optimistic_state = True
         self.async_write_ha_state()
@@ -161,53 +158,11 @@ class BenyWifiExtremeModeSwitch(BenyWifiDlbSwitch):
 
     async def async_turn_off(self, **kwargs) -> None:
         """Disable Extreme Mode."""
-        device_name = f"Beny Charger {self._device_id}"
+        device_name = get_device_id(self.hass, self._serial, self._device_model)
         await self.coordinator.async_set_dlb_config(device_name, extreme_mode=False)
         self._optimistic_state = False
         self.async_write_ha_state()
         _LOGGER.info(f"{device_name}: Extreme Mode disabled")
-
-    def _handle_coordinator_update(self) -> None:
-        """Clear optimistic state on coordinator refresh."""
-        self._optimistic_state = None
-        super()._handle_coordinator_update()
-
-
-class BenyWifiAntiOverloadSwitch(BenyWifiDlbSwitch):
-    """Switch to enable/disable Anti Overload Mode.
-
-    Anti Overload uses a threshold value (1–99, default 63) to limit grid draw.
-    The threshold is configured via the anti_overload_value number entity.
-    Turning off sends 0x00; turning on restores the last stored threshold value.
-    """
-
-    def __init__(self, coordinator, key, device_id=None, device_model=None):
-        """Initialize."""
-        super().__init__(coordinator, key, device_id, device_model)
-        self._attr_icon = "mdi:shield-alert"
-
-    @property
-    def is_on(self) -> bool:
-        """Return True if Anti Overload is active (non-zero byte)."""
-        if self._optimistic_state is not None:
-            return self._optimistic_state
-        return self.coordinator._dlb_config.get("anti_overload", 0x00) != 0x00
-
-    async def async_turn_on(self, **kwargs) -> None:
-        """Enable Anti Overload using the stored threshold value."""
-        device_name = f"Beny Charger {self._device_id}"
-        await self.coordinator.async_set_dlb_config(device_name, anti_overload=True)
-        self._optimistic_state = True
-        self.async_write_ha_state()
-        _LOGGER.info(f"{device_name}: Anti Overload enabled")
-
-    async def async_turn_off(self, **kwargs) -> None:
-        """Disable Anti Overload."""
-        device_name = f"Beny Charger {self._device_id}"
-        await self.coordinator.async_set_dlb_config(device_name, anti_overload=False)
-        self._optimistic_state = False
-        self.async_write_ha_state()
-        _LOGGER.info(f"{device_name}: Anti Overload disabled")
 
     def _handle_coordinator_update(self) -> None:
         """Clear optimistic state on coordinator refresh."""
@@ -224,9 +179,9 @@ class BenyWifiNightModeSwitch(BenyWifiDlbSwitch):
     to adjust the window hours independently.
     """
 
-    def __init__(self, coordinator, key, device_id=None, device_model=None):
+    def __init__(self, coordinator, key, serial=None, device_model=None):
         """Initialize."""
-        super().__init__(coordinator, key, device_id, device_model)
+        super().__init__(coordinator, key, serial, device_model)
         self._attr_icon = "mdi:weather-night"
 
     @property
@@ -249,7 +204,7 @@ class BenyWifiNightModeSwitch(BenyWifiDlbSwitch):
 
     async def async_turn_on(self, **kwargs) -> None:
         """Enable Night Mode."""
-        device_name = f"Beny Charger {self._device_id}"
+        device_name = get_device_id(self.hass, self._serial, self._device_model)
         await self.coordinator.async_set_dlb_config(device_name, night_mode=True)
         self._optimistic_state = True
         self.async_write_ha_state()
@@ -257,7 +212,7 @@ class BenyWifiNightModeSwitch(BenyWifiDlbSwitch):
 
     async def async_turn_off(self, **kwargs) -> None:
         """Disable Night Mode."""
-        device_name = f"Beny Charger {self._device_id}"
+        device_name = get_device_id(self.hass, self._serial, self._device_model)
         await self.coordinator.async_set_dlb_config(device_name, night_mode=False)
         self._optimistic_state = False
         self.async_write_ha_state()

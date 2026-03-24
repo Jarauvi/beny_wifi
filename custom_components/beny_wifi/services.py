@@ -8,7 +8,7 @@ from homeassistant.const import ATTR_DEVICE_ID
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.helpers import device_registry as dr
 
-from .const import DLB_MODE, DOMAIN
+from .const import DLB_MODE, DOMAIN, SECTION_DLB
 from .coordinator import BenyWifiUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -182,7 +182,7 @@ async def async_setup_services(hass: HomeAssistant) -> bool:
     # Only register DLB service if at least one configured entry has DLB capability
     from .const import DLB as DLB_KEY
     has_dlb = any(
-        entry_data.get("coordinator").config_entry.data.get(DLB_KEY, False)
+        entry_data.get("coordinator").config_entry.data.get(SECTION_DLB, {}).get(DLB_KEY, False)
         for entry_data in hass.data.get(DOMAIN, {}).values()
         if isinstance(entry_data, dict) and "coordinator" in entry_data
     )
