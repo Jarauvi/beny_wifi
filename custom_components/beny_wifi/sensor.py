@@ -26,6 +26,7 @@ from .const import (
     MODEL, 
     SERIAL,
     SECTION_DEVICE,
+    SECTION_DLB,
     get_device_id,
     get_config_parameter
 )
@@ -39,7 +40,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     serial = get_config_parameter(config_entry, SECTION_DEVICE, SERIAL)
     device_model = get_config_parameter(config_entry, SECTION_DEVICE, MODEL)
     device_type = get_config_parameter(config_entry, SECTION_DEVICE, CHARGER_TYPE)
-    dlb = get_config_parameter(config_entry, SECTION_DEVICE, DLB)
+    dlb = get_config_parameter(config_entry, SECTION_DLB, DLB)
 
     sensors = []
 

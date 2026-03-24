@@ -13,10 +13,14 @@ from .communication import build_message, read_message
 from .const import (
     CHARGER_TYPE,
     CLIENT_MESSAGE,
+    CONF_ANTI_OVERLOAD,
+    CONF_ANTI_OVERLOAD_VALUE,
     CONF_MAX_CURRENT_MAX,
     CONF_MAX_CURRENT_MIN,
     CONF_PIN,
     CONF_SERIAL,
+    DEFAULT_ANTI_OVERLOAD,
+    DEFAULT_ANTI_OVERLOAD_VALUE,
     DEFAULT_MAX_CURRENT_MAX,
     DEFAULT_MAX_CURRENT_MIN,
     DEFAULT_PORT,
@@ -35,6 +39,7 @@ from .const import (
     SECTION_DEVICE,
     SECTION_CONNECTION,
     SECTION_CURRENT_LIMITS,
+    SECTION_DLB,
     CONF_NUMERIC_PIN,
     get_config_parameter
 )
@@ -104,10 +109,10 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                     # DLB is a separate physical module — only enable if the model
                     # supports it AND the user confirmed they have the module installed.
-                    if user_input[SECTION_DEVICE][MODEL] in DLB_CHARGERS and user_input.get(DLB, False):
-                        user_input[SECTION_DEVICE][DLB] = True
+                    if user_input[SECTION_DEVICE][MODEL] in DLB_CHARGERS and user_input.get(SECTION_DLB, {}).get(DLB, False):
+                        user_input[SECTION_DLB][DLB] = True
                     else:
-                        user_input[SECTION_DEVICE][DLB] = False
+                        user_input[SECTION_DLB][DLB] = False
 
                     return self.async_create_entry(title=user_input[SECTION_DEVICE][MODEL], data=user_input)
 
@@ -127,7 +132,6 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         vol.Schema({
                             vol.Required(CONF_SERIAL, default=self._get_previous_user_input(user_input, SECTION_DEVICE, CONF_SERIAL, "")): str,
                             vol.Required(CONF_PIN, default=self._get_previous_user_input(user_input, SECTION_DEVICE, CONF_NUMERIC_PIN, "")): str,
-                            vol.Optional(DLB, default=self._get_previous_user_input(user_input, SECTION_DEVICE, DLB, False)): bool,
                         }), 
                         {"collapsed": False}
                     ),
@@ -137,7 +141,15 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             vol.Optional(CONF_MAX_CURRENT_MAX, default=self._get_previous_user_input(user_input, SECTION_CURRENT_LIMITS, CONF_MAX_CURRENT_MAX, DEFAULT_MAX_CURRENT_MAX)): vol.All(int, vol.Range(min=6, max=32)),                    
                         }), 
                         {"collapsed": False}
-                    )
+                    ),
+                    vol.Required(SECTION_DLB): section(
+                        vol.Schema({
+                            vol.Optional(DLB, default=self._get_previous_user_input(user_input, SECTION_DLB, DLB, False)): bool,
+                            vol.Optional(CONF_ANTI_OVERLOAD, default=self._get_previous_user_input(user_input, SECTION_DLB, CONF_ANTI_OVERLOAD, DEFAULT_ANTI_OVERLOAD)): bool,
+                            vol.Optional(CONF_ANTI_OVERLOAD_VALUE, default=self._get_previous_user_input(user_input, SECTION_DLB, CONF_ANTI_OVERLOAD_VALUE, DEFAULT_ANTI_OVERLOAD_VALUE)): vol.All(int, vol.Range(min=1, max=99)),
+                        }),
+                        {"collapsed": True}
+                    ),
                 }
             ),
             errors=self._errors
@@ -182,7 +194,7 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # Re-evaluate DLB: only allowed if model supports it AND user ticked the box
                 model = get_config_parameter(existing_data, SECTION_DEVICE, MODEL, "")
                 if model not in DLB_CHARGERS:
-                    user_input[SECTION_DEVICE][DLB] = False
+                    user_input[SECTION_DLB][DLB] = False
 
                 return self.async_update_reload_and_abort(self._get_reconfigure_entry(), data_updates=user_input)
 
@@ -201,7 +213,6 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required(SECTION_DEVICE): section(
                         vol.Schema({
                             vol.Required(CONF_PIN, default=self._get_previous_user_input(user_input, SECTION_DEVICE, CONF_NUMERIC_PIN, "", existing_entry)): str,
-                            vol.Optional(DLB, default=self._get_previous_user_input(user_input, SECTION_DEVICE, DLB, False, existing_entry)): bool,
                         }), 
                         {"collapsed": False}
                     ),
@@ -211,7 +222,15 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             vol.Optional(CONF_MAX_CURRENT_MAX, default=self._get_previous_user_input(user_input, SECTION_CURRENT_LIMITS, CONF_MAX_CURRENT_MAX, DEFAULT_MAX_CURRENT_MAX, existing_entry)): vol.All(int, vol.Range(min=6, max=32)),                    
                         }), 
                         {"collapsed": False}
-                    )
+                    ),
+                    vol.Required(SECTION_DLB): section(
+                        vol.Schema({
+                            vol.Optional(DLB, default=self._get_previous_user_input(user_input, SECTION_DLB, DLB, self._get_previous_user_input(None, SECTION_DEVICE, DLB, False, existing_entry), existing_entry)): bool,
+                            vol.Optional(CONF_ANTI_OVERLOAD, default=self._get_previous_user_input(user_input, SECTION_DLB, CONF_ANTI_OVERLOAD, DEFAULT_ANTI_OVERLOAD, existing_entry)): bool,
+                            vol.Optional(CONF_ANTI_OVERLOAD_VALUE, default=self._get_previous_user_input(user_input, SECTION_DLB, CONF_ANTI_OVERLOAD_VALUE, DEFAULT_ANTI_OVERLOAD_VALUE, existing_entry)): vol.All(int, vol.Range(min=1, max=99)),
+                        }),
+                        {"collapsed": True}
+                    ),
                 }
             ),
             errors=self._errors

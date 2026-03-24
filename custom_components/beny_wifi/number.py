@@ -19,6 +19,7 @@ from .const import (
     SERIAL,
     SECTION_DEVICE,
     SECTION_CURRENT_LIMITS,
+    SECTION_DLB,
     get_device_id, 
     get_config_parameter
 )
@@ -31,7 +32,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
     serial = get_config_parameter(config_entry, SECTION_DEVICE, SERIAL)
     device_model = get_config_parameter(config_entry, SECTION_DEVICE, MODEL)
-    dlb = get_config_parameter(config_entry, SECTION_DEVICE, DLB, False)
+    dlb = get_config_parameter(config_entry, SECTION_DLB, DLB, False)
     max_current_min = get_config_parameter(config_entry, SECTION_CURRENT_LIMITS, CONF_MAX_CURRENT_MIN, DEFAULT_MAX_CURRENT_MIN)
     max_current_max = get_config_parameter(config_entry, SECTION_CURRENT_LIMITS, CONF_MAX_CURRENT_MAX, DEFAULT_MAX_CURRENT_MAX)
     numbers = [
@@ -57,10 +58,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             ),
             BenyWifiNightEndNumber(
                 coordinator, "night_end_hour",
-                serial=serial, device_model=device_model,
-            ),
-            BenyWifiAntiOverloadValueNumber(
-                coordinator, "anti_overload_value",
                 serial=serial, device_model=device_model,
             ),
         ])
@@ -228,35 +225,3 @@ class BenyWifiNightEndNumber(BenyWifiBaseNumber):
         device_name = get_device_id(self.hass, self._serial, self._device_model)
         await self.coordinator.async_set_dlb_config(device_name, night_end=hour)
         _LOGGER.info(f"{device_name}: Night Mode end hour set to {hour:02d}:00")
-        
-class BenyWifiAntiOverloadValueNumber(BenyWifiBaseNumber):
-    """Threshold value for Anti Overload Mode (1–99).
-
-    This sets the grid-draw limit used when Anti Overload is enabled.
-    Adjusting it while Anti Overload is ON immediately resends the config.
-    Adjusting it while OFF stores the value ready for the next enable.
-    """
-
-    def __init__(self, coordinator, key, serial=None, device_model=None):
-        """Initialize."""
-        super().__init__(coordinator, key, serial=serial, device_model=device_model, min_value=1, max_value=99)
-        self._attr_icon = "mdi:transmission-tower-off"
-        self._attr_mode = NumberMode.BOX
-        self._attr_unique_id = f"{serial}_{key}"
-
-    @property
-    def native_value(self) -> float:
-        """Return the stored threshold value (always the non-zero value, even when disabled)."""
-        return float(self.coordinator._dlb_config.get("anti_overload_value", 0x3f))
-
-    async def async_set_native_value(self, value: float) -> None:
-        """Update Anti Overload threshold; resend to charger if currently enabled."""
-        threshold = int(value)
-        device_name = get_device_id(self.hass, self._serial, self._device_model)
-        await self.coordinator.async_set_dlb_config(
-            device_name, anti_overload_value=threshold
-        )
-        _LOGGER.info(
-            f"{device_name}: Anti Overload threshold set to {threshold}"
-            + (" (sent to charger)" if self.coordinator._dlb_config.get("anti_overload", 0) != 0 else " (stored, applies on next enable)")
-        )

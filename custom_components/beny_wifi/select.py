@@ -13,6 +13,7 @@ from .const import (
     MODEL, 
     SERIAL,
     SECTION_DEVICE,
+    SECTION_DLB,
     get_device_id,
     get_config_parameter,
 )
@@ -30,7 +31,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
     serial = get_config_parameter(config_entry, SECTION_DEVICE, SERIAL)
     device_model = get_config_parameter(config_entry, SECTION_DEVICE, MODEL)
-    dlb = get_config_parameter(config_entry, SECTION_DEVICE, DLB)
+    dlb = get_config_parameter(config_entry, SECTION_DLB, DLB)
 
     entities = []
 

@@ -18,7 +18,7 @@ DLB = "dlb"
 
 SCAN_INTERVAL: Final = "update_interval"
 
-DEFAULT_SCAN_INTERVAL: Final = 30
+DEFAULT_SCAN_INTERVAL: Final = 10  # lowered from 30s — UDP round-trip is fast on a local network
 DEFAULT_PORT = 3333 # default listening port (at least for "BCP-AT1N-L)
 
 # Configurable max-current slider bounds
@@ -26,6 +26,12 @@ CONF_MAX_CURRENT_MIN: Final = "max_current_min"
 CONF_MAX_CURRENT_MAX: Final = "max_current_max"
 DEFAULT_MAX_CURRENT_MIN: Final = 6
 DEFAULT_MAX_CURRENT_MAX: Final = 32
+
+# Anti Overload config (stored in SECTION_DLB during setup)
+CONF_ANTI_OVERLOAD: Final = "anti_overload_enabled"
+CONF_ANTI_OVERLOAD_VALUE: Final = "anti_overload_threshold"
+DEFAULT_ANTI_OVERLOAD: Final = False
+DEFAULT_ANTI_OVERLOAD_VALUE: Final = 63  # 0x3f — matches charger default
 
 IP_ADDRESS = "ip_address"
 PORT = "port"
@@ -37,6 +43,7 @@ CONF_NUMERIC_PIN = "numeric_pin"
 SECTION_CONNECTION: Final = "section_connection"
 SECTION_DEVICE: Final = "section_device"
 SECTION_CURRENT_LIMITS: Final = "section_current_limits"
+SECTION_DLB: Final = "section_dlb"
 
 _LOGGER = logging.getLogger(__name__)
 

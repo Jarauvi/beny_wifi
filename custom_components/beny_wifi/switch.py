@@ -11,6 +11,7 @@ from .const import (
     MODEL, 
     SERIAL,
     SECTION_DEVICE,
+    SECTION_DLB,
     get_device_id,
     get_config_parameter
 )
@@ -23,7 +24,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
     serial = get_config_parameter(config_entry, SECTION_DEVICE, SERIAL)
     device_model = get_config_parameter(config_entry, SECTION_DEVICE, MODEL)
-    dlb = get_config_parameter(config_entry, SECTION_DEVICE, DLB)
+    dlb = get_config_parameter(config_entry, SECTION_DLB, DLB)
 
     entities = []
 
@@ -44,12 +45,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             BenyWifiNightModeSwitch(
                 coordinator,
                 "night_mode",
-                serial=serial,
-                device_model=device_model,
-            ),
-            BenyWifiAntiOverloadSwitch(
-                coordinator,
-                "anti_overload",
                 serial=serial,
                 device_model=device_model,
             ),
@@ -168,48 +163,6 @@ class BenyWifiExtremeModeSwitch(BenyWifiDlbSwitch):
         self._optimistic_state = False
         self.async_write_ha_state()
         _LOGGER.info(f"{device_name}: Extreme Mode disabled")
-
-    def _handle_coordinator_update(self) -> None:
-        """Clear optimistic state on coordinator refresh."""
-        self._optimistic_state = None
-        super()._handle_coordinator_update()
-
-
-class BenyWifiAntiOverloadSwitch(BenyWifiDlbSwitch):
-    """Switch to enable/disable Anti Overload Mode.
-
-    Anti Overload uses a threshold value (1–99, default 63) to limit grid draw.
-    The threshold is configured via the anti_overload_value number entity.
-    Turning off sends 0x00; turning on restores the last stored threshold value.
-    """
-
-    def __init__(self, coordinator, key, serial=None, device_model=None):
-        """Initialize."""
-        super().__init__(coordinator, key, serial, device_model)
-        self._attr_icon = "mdi:shield-alert"
-
-    @property
-    def is_on(self) -> bool:
-        """Return True if Anti Overload is active (non-zero byte)."""
-        if self._optimistic_state is not None:
-            return self._optimistic_state
-        return self.coordinator._dlb_config.get("anti_overload", 0x00) != 0x00
-
-    async def async_turn_on(self, **kwargs) -> None:
-        """Enable Anti Overload using the stored threshold value."""
-        device_name = get_device_id(self.hass, self._serial, self._device_model)
-        await self.coordinator.async_set_dlb_config(device_name, anti_overload=True)
-        self._optimistic_state = True
-        self.async_write_ha_state()
-        _LOGGER.info(f"{device_name}: Anti Overload enabled")
-
-    async def async_turn_off(self, **kwargs) -> None:
-        """Disable Anti Overload."""
-        device_name = get_device_id(self.hass, self._serial, self._device_model)
-        await self.coordinator.async_set_dlb_config(device_name, anti_overload=False)
-        self._optimistic_state = False
-        self.async_write_ha_state()
-        _LOGGER.info(f"{device_name}: Anti Overload disabled")
 
     def _handle_coordinator_update(self) -> None:
         """Clear optimistic state on coordinator refresh."""

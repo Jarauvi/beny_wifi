@@ -4,6 +4,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from .const import (
+    CONF_ANTI_OVERLOAD,
+    CONF_ANTI_OVERLOAD_VALUE,
+    DEFAULT_ANTI_OVERLOAD,
+    DEFAULT_ANTI_OVERLOAD_VALUE,
     DOMAIN, 
     IP_ADDRESS, 
     PLATFORMS, 
@@ -22,6 +26,7 @@ from .const import (
     SECTION_CONNECTION,
     SECTION_DEVICE,
     SECTION_CURRENT_LIMITS,
+    SECTION_DLB,
     get_config_parameter
 )
 from .coordinator import BenyWifiUpdateCoordinator
@@ -106,9 +111,40 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             CONF_MAX_CURRENT_MIN: config_entry.data.get(CONF_MAX_CURRENT_MIN, DEFAULT_MAX_CURRENT_MIN),
             CONF_MAX_CURRENT_MAX: config_entry.data.get(CONF_MAX_CURRENT_MAX, DEFAULT_MAX_CURRENT_MAX),  
         }
+        # Seed DLB section with defaults — Anti Overload was not configurable in v1/v2
+        new_data[SECTION_DLB] = {
+            CONF_ANTI_OVERLOAD: DEFAULT_ANTI_OVERLOAD,
+            CONF_ANTI_OVERLOAD_VALUE: DEFAULT_ANTI_OVERLOAD_VALUE,
+        }
         
         # Update the entry with new sectioned data and version
-        hass.config_entries.async_update_entry(config_entry, data=new_data, version=3)
+        hass.config_entries.async_update_entry(config_entry, data=new_data, version=4)
+
+    elif config_entry.version == 3:
+        # v3 → v4: add SECTION_DLB with Anti Overload defaults.
+        # Preserve all existing v3 data unchanged; just append the new section.
+        new_data = {**config_entry.data}
+        new_data[SECTION_DLB] = {
+            CONF_ANTI_OVERLOAD: DEFAULT_ANTI_OVERLOAD,
+            CONF_ANTI_OVERLOAD_VALUE: DEFAULT_ANTI_OVERLOAD_VALUE,
+        }
+        hass.config_entries.async_update_entry(config_entry, data=new_data, version=4)
+
+    elif config_entry.version == 4:
+        # v4 → v5: move 'dlb' from SECTION_DEVICE into SECTION_DLB.
+        new_data = {**config_entry.data}
+        device_section = dict(new_data.get(SECTION_DEVICE, {}))
+        dlb_section = dict(new_data.get(SECTION_DLB, {}))
+
+        # Move dlb flag across; default False if somehow missing
+        dlb_value = device_section.pop(DLB, False)
+        if DLB not in dlb_section:
+            dlb_section[DLB] = dlb_value
+
+        new_data[SECTION_DEVICE] = device_section
+        new_data[SECTION_DLB] = dlb_section
+
+        hass.config_entries.async_update_entry(config_entry, data=new_data, version=5)
 
     _LOGGER.info("Migration to version %s successful", config_entry.version)
     return True
