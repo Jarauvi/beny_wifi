@@ -115,7 +115,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
         new_data[SECTION_DLB] = {
             DLB: config_entry.data.get(DLB, False),
             CONF_ANTI_OVERLOAD: DEFAULT_ANTI_OVERLOAD,
-            CONF_ANTI_OVERLOAD_VALUE: DEFAULT_ANTI_OVERLOAD_VALUE,
+            CONF_ANTI_OVERLOAD_VALUE: 15,
         }
         
         # Update the entry with new sectioned data and version
