@@ -81,10 +81,6 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             user_input[SECTION_DEVICE][CONF_NUMERIC_PIN] = user_input[SECTION_DEVICE][CONF_PIN]
             user_input[SECTION_DEVICE][CONF_PIN] = convert_pin_to_hex(user_input[SECTION_DEVICE][CONF_PIN])
             
-            pin_is_valid = self._pin_is_valid(user_input[SECTION_CONNECTION][IP_ADDRESS], user_input[SECTION_CONNECTION][PORT], user_input[SECTION_DEVICE][CONF_PIN])
-            if not pin_is_valid:
-                self._errors["base"] = "wrong_pin"
-
             if "base" not in self._errors or self._errors["base"] is None:
                 dev_data = await self._poll_devices(user_input[SECTION_DEVICE][CONF_SERIAL], user_input[SECTION_DEVICE][CONF_PIN], user_input[SECTION_CONNECTION][IP_ADDRESS], user_input[SECTION_CONNECTION][PORT])
                 if dev_data is not None:
@@ -114,7 +110,11 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     else:
                         user_input[SECTION_DLB][DLB] = False
 
-                    return self.async_create_entry(title=user_input[SECTION_DEVICE][MODEL], data=user_input)
+                    pin_is_valid = await self.hass.async_add_executor_job(self._pin_is_valid, user_input[SECTION_CONNECTION][IP_ADDRESS], user_input[SECTION_CONNECTION][PORT], user_input[SECTION_DEVICE][CONF_PIN])
+                    if not pin_is_valid:
+                        self._errors["base"] = "wrong_pin"
+                    else:
+                        return self.async_create_entry(title=user_input[SECTION_DEVICE][MODEL], data=user_input)
 
         return self.async_show_form(
             step_id="user",
@@ -185,18 +185,17 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             user_input[SECTION_DEVICE][CONF_NUMERIC_PIN] = user_input[SECTION_DEVICE][CONF_PIN]
             user_input[SECTION_DEVICE][CONF_PIN] = convert_pin_to_hex(user_input[SECTION_DEVICE][CONF_PIN])
 
-            pin_is_valid = self._pin_is_valid(user_input[SECTION_CONNECTION][IP_ADDRESS], user_input[SECTION_CONNECTION][PORT], user_input[SECTION_DEVICE][CONF_PIN])
-            if not pin_is_valid:
-                self._errors["base"] = "wrong_pin"
-
-
             if "base" not in self._errors or self._errors["base"] is None:
                 # Re-evaluate DLB: only allowed if model supports it AND user ticked the box
                 model = get_config_parameter(existing_data, SECTION_DEVICE, MODEL, "")
                 if model not in DLB_CHARGERS:
                     user_input[SECTION_DLB][DLB] = False
-
-                return self.async_update_reload_and_abort(self._get_reconfigure_entry(), data_updates=user_input)
+                    
+                pin_is_valid = await self.hass.async_add_executor_job(self._pin_is_valid, user_input[SECTION_CONNECTION][IP_ADDRESS], user_input[SECTION_CONNECTION][PORT], user_input[SECTION_DEVICE][CONF_PIN])
+                if not pin_is_valid:
+                    self._errors["base"] = "wrong_pin"
+                else:
+                    return self.async_update_reload_and_abort(self._get_reconfigure_entry(), data_updates=user_input)
 
         return self.async_show_form(
             step_id="reconfigure",
@@ -314,6 +313,9 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return await asyncio.to_thread(sync_socket_communication)
 
     def _send_model_request(self, ip, port, pin, header_prefix):
+        request = b"" # Initialize
+        response = b"" # Initialize
+        data = None    # Initialize
         try:
             request = build_message(
                 CLIENT_MESSAGE.REQUEST_DATA,
@@ -330,15 +332,19 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         try:
             response, _ = sock.recvfrom(1024)
-            sock.close()
             data = read_message(response.decode("ascii"))
             return data
         except Exception as ex:
             self._errors["base"] = "cannot_communicate"
             _LOGGER.exception(f"Exception receiving model data from {ip}:{port}. Cause: {ex}. Request hex: {request}. Response hex: {response}. Translated response: {data}")  # noqa: G004, TRY401
             return None
+        finally:
+            sock.close()
         
     def _pin_is_valid(self, ip, port, pin):
+        request = b"" # Initialize
+        response = b"" # Initialize
+        data = None    # Initialize
         try:
             request = build_message(
                 CLIENT_MESSAGE.REQUEST_DATA,
@@ -354,7 +360,6 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         try:
             response, _ = sock.recvfrom(1024)
-            sock.close()
             response = response.decode("ascii")
             if "55aa100008" in response:
                 return False
@@ -364,3 +369,5 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._errors["base"] = "cannot_communicate"
             _LOGGER.exception(f"Exception receiving model data from {ip}:{port}. Cause: {ex}. Request hex: {request}. Response hex: {response}. Translated response: {data}")  # noqa: G004, TRY401
             return None
+        finally:
+            sock.close()
