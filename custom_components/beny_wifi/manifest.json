@@ -8,5 +8,5 @@
   "issue_tracker": "https://github.com/Jarauvi/beny_wifi/issues",
   "loggers": ["custom_components.beny_wifi"],
   "requirements": [],
-  "version": "1.0.0"
+  "version": "1.0.1"
 }
