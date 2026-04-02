@@ -30,6 +30,7 @@ from .const import (
     DOMAIN,
     IP_ADDRESS,
     MODEL,
+    OCPP_CHARGERS,
     PORT,
     REQUEST_TYPE,
     SCAN_INTERVAL,
@@ -109,6 +110,15 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         user_input[SECTION_DLB][DLB] = True
                     else:
                         user_input[SECTION_DLB][DLB] = False
+
+                    # Warn if model is a known OCPP variant — local UDP polling may be
+                    # unreliable, but if we got this far the device did respond, so allow it.
+                    if user_input[SECTION_DEVICE][MODEL] in OCPP_CHARGERS:
+                        _LOGGER.warning(
+                            f"Model {user_input[SECTION_DEVICE][MODEL]} is an OCPP variant. "  # noqa: G004
+                            "Local UDP communication succeeded during setup, but polling reliability "
+                            "may vary depending on firmware version and network configuration."
+                        )
 
                     pin_is_valid = await self.hass.async_add_executor_job(self._pin_is_valid, user_input[SECTION_CONNECTION][IP_ADDRESS], user_input[SECTION_CONNECTION][PORT], user_input[SECTION_DEVICE][CONF_PIN])
                     if not pin_is_valid:
@@ -272,6 +282,13 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         response = response.decode('ascii')
                         data = read_message(response)
 
+                        # Guard: read_message returns None on invalid checksum
+                        if data is None:
+                            _LOGGER.warning(
+                                f"Received broadcast response from {addr} but checksum was invalid — ignoring"  # noqa: G004
+                            )
+                            continue
+
                         if data['message_type'] == "SERVER_MESSAGE.ACCESS_DENIED":
                             self._errors["base"] = "access_denied"
                             _LOGGER.exception("Device denied request. Please reconfigure integration if your pin has changed")  # noqa: G004, TRY401
@@ -290,13 +307,37 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             except Exception as ex:  # noqa: BLE001
                 self._errors["base"] = "cannot_communicate"
-                _LOGGER.exception(f"Exception receiving device handshake data by broadcast 255.255.255.255:{dev_data["port"]}. Cause: {ex}")  # noqa: G004, TRY401
+                _LOGGER.exception(f"Exception receiving device handshake data by broadcast 255.255.255.255:{dev_data['port']}. Cause: {ex}")  # noqa: G004, TRY401
                 return None
 
             if dev_data['ip_address'] is None:
-                self._errors["base"] = "cannot_resolve_ip"
-                _LOGGER.exception("Cannot resolve device IP, you can try to set it manually")  # noqa: G004, TRY401
-                return None
+                # If user supplied an IP manually, attempt a direct unicast handshake
+                # before giving up. OCPP variants and some firewalled devices do not
+                # respond to UDP broadcasts but may respond to a direct packet.
+                if ip:
+                    _LOGGER.info(
+                        f"Broadcast returned no IP; attempting direct unicast handshake to {ip}:{port}"  # noqa: G004
+                    )
+                    direct_data = _try_direct_handshake(ip, port, pin, serial)
+                    if direct_data is not None:
+                        dev_data.update(direct_data)
+                    else:
+                        self._errors["base"] = "cannot_communicate"
+                        _LOGGER.warning(
+                            f"Direct unicast handshake to {ip}:{port} also failed. "  # noqa: G004
+                            "The device did not respond to local UDP. If this is an OCPP model "
+                            "(model name ends in -P) it may not support local UDP polling."
+                        )
+                        return None
+                else:
+                    self._errors["base"] = "cannot_resolve_ip"
+                    _LOGGER.exception("Cannot resolve device IP, you can try to set it manually")  # noqa: G004, TRY401
+                    return None
+
+            # Brief pause to allow the charger to finish processing the handshake
+            # before we send the model request — some firmware versions need this.
+            import time
+            time.sleep(0.5)
 
             data = self._send_model_request(dev_data['ip_address'], dev_data['port'], dev_data['pin'], "55aa10")
             if not data:
@@ -310,36 +351,89 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             return dev_data
 
+        def _try_direct_handshake(ip, port, pin, serial):
+            """Attempt a unicast POLL_DEVICES packet to a known IP.
+
+            Some devices (notably OCPP variants that are also reachable via LAN)
+            do not respond to broadcasts but will reply to a direct unicast packet.
+            Returns a partial dev_data dict on success, or None on failure.
+            """
+            request = build_message(
+                CLIENT_MESSAGE.POLL_DEVICES,
+                {"pin": pin, "serial": convert_serial_to_hex(serial)}
+            ).encode('ascii')
+
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.settimeout(5)
+                sock.sendto(request, (ip, port))
+                _LOGGER.debug(f"Direct unicast handshake to {ip}:{port}")  # noqa: G004
+
+                response, _ = sock.recvfrom(1024)
+                sock.close()
+
+                data = read_message(response.decode('ascii'))
+                if data is None:
+                    _LOGGER.warning(f"Direct unicast response from {ip} had invalid checksum")  # noqa: G004
+                    return None
+
+                if data.get('message_type') == "SERVER_MESSAGE.ACCESS_DENIED":
+                    return None
+
+                return {
+                    "serial_number": data.get('serial', serial),
+                    "ip_address": ip,
+                    "port": port,
+                }
+            except Exception as ex:  # noqa: BLE001
+                _LOGGER.debug(f"Direct unicast handshake to {ip}:{port} failed: {ex}")  # noqa: G004
+                return None
+
         return await asyncio.to_thread(sync_socket_communication)
 
-    def _send_model_request(self, ip, port, pin, header_prefix):
-        request = b"" # Initialize
-        response = b"" # Initialize
-        data = None    # Initialize
-        try:
-            request = build_message(
-                CLIENT_MESSAGE.REQUEST_DATA,
-                {"pin": pin, "request_type": get_hex(REQUEST_TYPE.MODEL.value)},
-                header_prefix=header_prefix
-            ).encode("ascii")
-        except Exception as ex:
-            self._errors["base"] = "cannot_connect"
-            _LOGGER.exception(f"Exception sending model request to {ip}:{port}. Cause: {ex}. Request: {request}")  # noqa: G004, TRY401
+    def _send_model_request(self, ip, port, pin, header_prefix, retries=3, timeout=5):
+        """Send a model request to the charger and return parsed response, or None on failure.
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(2)
-        sock.sendto(request, (ip, port))
+        Retries up to `retries` times with a short delay between attempts to handle
+        chargers that are slow to respond after the initial handshake broadcast.
+        The socket sendto is inside the try block so any send-side errors are also caught.
+        """
+        request = b""  # Initialize so it's always available in exception logging
+        for attempt in range(1, retries + 1):
+            response = b""
+            data = None
+            try:
+                request = build_message(
+                    CLIENT_MESSAGE.REQUEST_DATA,
+                    {"pin": pin, "request_type": get_hex(REQUEST_TYPE.MODEL.value)},
+                    header_prefix=header_prefix
+                ).encode("ascii")
 
-        try:
-            response, _ = sock.recvfrom(1024)
-            data = read_message(response.decode("ascii"))
-            return data
-        except Exception as ex:
-            self._errors["base"] = "cannot_communicate"
-            _LOGGER.exception(f"Exception receiving model data from {ip}:{port}. Cause: {ex}. Request hex: {request}. Response hex: {response}. Translated response: {data}")  # noqa: G004, TRY401
-            return None
-        finally:
-            sock.close()
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.settimeout(timeout)
+                try:
+                    sock.sendto(request, (ip, port))
+                    response, _ = sock.recvfrom(1024)
+                    data = read_message(response.decode("ascii"))
+                    return data
+                finally:
+                    sock.close()
+
+            except Exception as ex:
+                _LOGGER.warning(  # noqa: G004
+                    f"Model request attempt {attempt}/{retries} failed for {ip}:{port} "
+                    f"(prefix={header_prefix}). Cause: {ex}. "
+                    f"Request hex: {request}. Response hex: {response}. Translated: {data}"
+                )
+                if attempt < retries:
+                    import time
+                    time.sleep(0.5)
+
+        self._errors["base"] = "cannot_communicate"
+        _LOGGER.error(  # noqa: G004
+            f"All {retries} model request attempts failed for {ip}:{port} (prefix={header_prefix})"
+        )
+        return None
         
     def _pin_is_valid(self, ip, port, pin):
         request = b"" # Initialize
