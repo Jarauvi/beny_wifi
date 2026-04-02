@@ -219,6 +219,19 @@ DLB_CHARGERS = [
     "BCP-A2-L"
 ]
 
+# OCPP variants communicate with a cloud backend over TCP and do NOT respond to
+# local UDP broadcasts or model-request packets. The model name suffix "-P" denotes
+# these OCPP-capable units (Plusrite branding). They can still be used with this
+# integration if local UDP access is available (some firmware/network configurations
+# do support it), but the config flow will warn the user if local communication
+# cannot be established.
+OCPP_CHARGERS = [
+    "BCP-A2N-P",
+    "BCP-B2N-P",
+    "BCP-AT2N-P",
+    "BCP-BT2N-P",
+]
+
 class CHARGER_STATE(Enum):
     """Charger states."""
 
