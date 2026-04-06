@@ -46,7 +46,9 @@ This integration mimics the **ZBox** mobile app's communication protocol. Any ch
 ### Supported Chargers
 Supports both **1-phase** and **3-phase** "smart" chargers (with or without DLB). 
 
-**OCPP-equipped** devices seem to be using only cloud API - these *do not* work with the integration
+> [!IMPORTANT]
+> **OCPP-equipped** devices seem to be using only cloud API - these **do not** work with the integration.
+> Suffix -P in the model name tells, that this integration does not work with your device.
 
 
 **Supported Firmware:**
