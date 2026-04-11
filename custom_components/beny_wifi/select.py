@@ -17,6 +17,7 @@ from .const import (
     get_device_id,
     get_config_parameter,
 )
+from .coordinator import HYBRID_CURRENT_MIN, HYBRID_CURRENT_MAX
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -76,6 +77,10 @@ class BenyWifiDlbModeSelect(CoordinatorEntity, SelectEntity):
              so the UI snaps to the new value without waiting for a poll).
           2. Coordinator's _dlb_config cache (authoritative after any command).
           3. Safe default.
+
+        Hybrid mode detection: byte12 stores the current limit directly (1–98A).
+        Sentinel values are: 0x00=PURE_PV, 0x63/99=FULL_SPEED, 0xFF=DLB_BOX.
+        Any byte12 value in the range HYBRID_CURRENT_MIN–HYBRID_CURRENT_MAX is Hybrid.
         """
         if self._optimistic_label is not None:
             return self._optimistic_label
@@ -88,7 +93,7 @@ class BenyWifiDlbModeSelect(CoordinatorEntity, SelectEntity):
                 return _MODE_TO_LABEL[DLB_MODE.FULL_SPEED]
             elif raw == DLB_MODE.DLB_BOX.value:
                 return _MODE_TO_LABEL[DLB_MODE.DLB_BOX]
-            elif 1 <= raw <= 32:
+            elif HYBRID_CURRENT_MIN <= raw <= HYBRID_CURRENT_MAX:
                 return _MODE_TO_LABEL[DLB_MODE.HYBRID]
 
         return _MODE_TO_LABEL[DLB_MODE.DLB_BOX]

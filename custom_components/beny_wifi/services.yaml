@@ -197,13 +197,16 @@ set_dlb_config:
               value: "pure_pv"
     hybrid_current:
       name: "Hybrid Current Limit"
-      description: "Current limit in amps when DLB Mode is set to Hybrid (6–32A)."
+      description: >
+        Current limit in amps when DLB Mode is set to Hybrid (1–98A).
+        Note: 99A is not available — that value is reserved as the charger's
+        Full Speed sentinel and would switch the mode rather than set a current limit.
       required: false
       example: 16
       selector:
         number:
-          min: 6
-          max: 32
+          min: 1
+          max: 98
           step: 1
           unit_of_measurement: "A"
           mode: slider
