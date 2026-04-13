@@ -42,6 +42,16 @@ DEFAULT_NIGHT_END = 6     # 6am
 # scan interval so behaviour is consistent regardless of polling rate.
 _STALE_WINDOW_SECONDS = 180  # ~3 minutes
 
+# Valid hybrid current range.
+# Byte12 of SET_DLB_CONFIG encodes the hybrid current directly.
+# Values 0x00 (PURE_PV), 0x63/99 (FULL_SPEED), and 0xFF (DLB_BOX) are
+# sentinel values used by the charger for non-hybrid modes.
+# Therefore 99 (0x63) must be excluded from the hybrid range even though
+# the Z-Box app labels its slider as 1–99: sending 99 would engage FULL_SPEED.
+# The practical safe range is 1–98.
+HYBRID_CURRENT_MIN = 1
+HYBRID_CURRENT_MAX = 98
+
 
 class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Beny Wifi update coordinator."""
@@ -483,7 +493,9 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             device_name:         Human-readable device label for logging.
             dlb_enabled:         True to enable PV Dynamic Load Balance, False to disable.
             dlb_mode:            DLB_MODE enum value. For HYBRID, also supply hybrid_current.
-            hybrid_current:      Current limit in amps (6-32) when dlb_mode=HYBRID.
+            hybrid_current:      Current limit in amps (1-98) when dlb_mode=HYBRID.
+                                 Range is 1-98 (not 1-99) because byte value 99 (0x63) is
+                                 the FULL_SPEED sentinel and would be misinterpreted by the charger.
             extreme_mode:        True to enable Extreme Mode, False to disable.
             night_mode:          True to enable Night Mode, False to disable.
             night_start:         Night mode start hour (0-23, 24h).
@@ -515,10 +527,15 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         if dlb_mode is not None:
             if dlb_mode == DLB_MODE.HYBRID:
-                # For hybrid, byte12 carries the actual current limit
+                # For hybrid, byte12 carries the actual current limit.
+                # Valid range is HYBRID_CURRENT_MIN–HYBRID_CURRENT_MAX (1–98).
+                # 99 (0x63) is excluded because it is the FULL_SPEED sentinel value.
                 current = hybrid_current if hybrid_current is not None else cfg["hybrid_current"]
-                if not (6 <= current <= 32):
-                    raise ValueError("hybrid_current must be between 6 and 32 amps")
+                if not (HYBRID_CURRENT_MIN <= current <= HYBRID_CURRENT_MAX):
+                    raise ValueError(
+                        f"hybrid_current must be between {HYBRID_CURRENT_MIN} and {HYBRID_CURRENT_MAX} amps "
+                        f"(99 is reserved as the FULL_SPEED sentinel)"
+                    )
                 cfg["hybrid_current"] = current
                 cfg["dlb_mode"] = current  # byte12 = amps value directly
             else:

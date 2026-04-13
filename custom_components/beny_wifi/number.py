@@ -23,6 +23,7 @@ from .const import (
     get_device_id, 
     get_config_parameter
 )
+from .coordinator import HYBRID_CURRENT_MIN, HYBRID_CURRENT_MAX
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -138,7 +139,12 @@ class BenyWifiMaxCurrentNumber(BenyWifiBaseNumber):
         return False
 
 class BenyWifiHybridCurrentNumber(BenyWifiBaseNumber):
-    """Current limit for Hybrid DLB mode (1–32 A).
+    """Current limit for Hybrid DLB mode (1–98 A).
+
+    The valid range is 1–98A. Although the Z-Box app labels its slider as 1–99,
+    the value 99 (0x63) is the FULL_SPEED sentinel byte and would be misinterpreted
+    by the charger as a mode switch rather than a current limit. 98A is the safe
+    maximum for hybrid current.
 
     Adjusting this while already in Hybrid mode immediately resends the config.
     Adjusting it in any other mode stores the value ready for the next switch.
@@ -146,7 +152,10 @@ class BenyWifiHybridCurrentNumber(BenyWifiBaseNumber):
 
     def __init__(self, coordinator, key, serial=None, device_model=None):
         """Initialize."""
-        super().__init__(coordinator, key, serial=serial, device_model=device_model, min_value=1, max_value=32)
+        super().__init__(
+            coordinator, key, serial=serial, device_model=device_model,
+            min_value=HYBRID_CURRENT_MIN, max_value=HYBRID_CURRENT_MAX,
+        )
         self._attr_icon = "mdi:current-ac"
         self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
         self._attr_mode = NumberMode.SLIDER
@@ -164,8 +173,11 @@ class BenyWifiHybridCurrentNumber(BenyWifiBaseNumber):
 
         self.coordinator._dlb_config["hybrid_current"] = current
 
+        # Detect Hybrid mode: byte12 holds the current value directly.
+        # Valid hybrid range is HYBRID_CURRENT_MIN–HYBRID_CURRENT_MAX (1–98).
+        # Values 0 (PURE_PV), 99/0x63 (FULL_SPEED), and 255/0xFF (DLB_BOX) are sentinels.
         raw = self.coordinator._dlb_config.get("dlb_mode")
-        if raw is not None and 1 <= raw <= 32:
+        if raw is not None and HYBRID_CURRENT_MIN <= raw <= HYBRID_CURRENT_MAX:
             await self.coordinator.async_set_dlb_config(
                 device_name,
                 dlb_mode=DLB_MODE.HYBRID,
