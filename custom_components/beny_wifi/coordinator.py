@@ -216,7 +216,6 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             start_time = time.monotonic()
             response = await loop.run_in_executor(None, self._send_udp_request, request)
             latency = time.monotonic() - start_time
-            data["udp_latency"] = round(latency * 1000, 2)
             
             # Decode and parse the response
             response = response.decode('ascii')
@@ -232,6 +231,8 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             if data['message_type'] == "SERVER_MESSAGE.ACCESS_DENIED":
                 raise UpdateFailed("Device denied request. Please reconfigure integration if your pin has changed")
+
+            data["udp_latency"] = round(latency * 1000, 2)
 
             # Set unset state to both start and end time if timer is not set at all
             if data['timer_state'] == 'UNSET':

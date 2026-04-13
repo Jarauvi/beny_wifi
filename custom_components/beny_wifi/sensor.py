@@ -56,7 +56,11 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             BenyWifiTemperatureSensor(coordinator, "temperature", device_model=device_model, serial=serial),
             BenyWifiEnergySensor(coordinator, "maximum_session_consumption", icon="mdi:meter-electric", device_model=device_model, serial=serial),
             BenyWifiTimerSensor(coordinator, "timer_start", icon="mdi:timer-sand-full", device_model=device_model, serial=serial),
-            BenyWifiTimerSensor(coordinator, "timer_end", icon="mdi:timer-sand-empty", device_model=device_model, serial=serial)
+            BenyWifiTimerSensor(coordinator, "timer_end", icon="mdi:timer-sand-empty", device_model=device_model, serial=serial),
+            BenyWifiSensor(coordinator, "fault_code", icon="mdi:alert-circle-outline", device_model=device_model, serial=serial),
+            BenyWifiLatencySensor(coordinator, "udp_latency", device_model=device_model, serial=serial),
+            BenyWifiSensor(coordinator, "emergency_stop_active", icon="mdi:stop-circle", device_model=device_model, serial=serial),
+            BenyWifiSensor(coordinator, "over_temperature_fault", icon="mdi:thermometer-alert", device_model=device_model, serial=serial)
         ]
 
     # add all three phases if model supports them
@@ -75,7 +79,11 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             BenyWifiTemperatureSensor(coordinator, "temperature", device_model=device_model, serial=serial),
             BenyWifiEnergySensor(coordinator, "maximum_session_consumption", icon="mdi:meter-electric", device_model=device_model, serial=serial),
             BenyWifiTimerSensor(coordinator, "timer_start", icon="mdi:timer-sand-full", device_model=device_model, serial=serial),
-            BenyWifiTimerSensor(coordinator, "timer_end", icon="mdi:timer-sand-empty", device_model=device_model, serial=serial)
+            BenyWifiTimerSensor(coordinator, "timer_end", icon="mdi:timer-sand-empty", device_model=device_model, serial=serial),
+            BenyWifiSensor(coordinator, "fault_code", icon="mdi:alert-circle-outline", device_model=device_model, serial=serial),
+            BenyWifiLatencySensor(coordinator, "udp_latency", device_model=device_model, serial=serial),
+            BenyWifiSensor(coordinator, "emergency_stop_active", icon="mdi:stop-circle", device_model=device_model, serial=serial),
+            BenyWifiSensor(coordinator, "over_temperature_fault", icon="mdi:thermometer-alert", device_model=device_model, serial=serial)
         ]
 
     # TODO: DLB
@@ -205,5 +213,14 @@ class BenyWifiTimerSensor(BenyWifiSensor):
     """Timer sensor class."""
 
     def __init__(self, coordinator, key, device_model=None, serial=None, icon="mdi:timer-sand-empty"):
+        """Initialize sensor."""
+        super().__init__(coordinator, key, serial=serial, device_model=device_model, icon=icon)
+
+class BenyWifiLatencySensor(BenyWifiSensor):
+    """Latency sensor class."""
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = "ms"
+
+    def __init__(self, coordinator, key, device_model=None, serial=None, icon="mdi:timer-outline"):
         """Initialize sensor."""
         super().__init__(coordinator, key, serial=serial, device_model=device_model, icon=icon)

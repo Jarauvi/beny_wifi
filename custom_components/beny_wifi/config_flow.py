@@ -30,7 +30,6 @@ from .const import (
     DOMAIN,
     IP_ADDRESS,
     MODEL,
-    OCPP_CHARGERS,
     PORT,
     REQUEST_TYPE,
     SCAN_INTERVAL,
@@ -110,15 +109,6 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         user_input[SECTION_DLB][DLB] = True
                     else:
                         user_input[SECTION_DLB][DLB] = False
-
-                    # Warn if model is a known OCPP variant — local UDP polling may be
-                    # unreliable, but if we got this far the device did respond, so allow it.
-                    if user_input[SECTION_DEVICE][MODEL] in OCPP_CHARGERS:
-                        _LOGGER.warning(
-                            f"Model {user_input[SECTION_DEVICE][MODEL]} is an OCPP variant. "  # noqa: G004
-                            "Local UDP communication succeeded during setup, but polling reliability "
-                            "may vary depending on firmware version and network configuration."
-                        )
 
                     pin_is_valid = await self.hass.async_add_executor_job(self._pin_is_valid, user_input[SECTION_CONNECTION][IP_ADDRESS], user_input[SECTION_CONNECTION][PORT], user_input[SECTION_DEVICE][CONF_PIN])
                     if not pin_is_valid:
