@@ -4,6 +4,7 @@ from datetime import timedelta
 import logging
 import socket
 from typing import Any
+import time
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -212,8 +213,11 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             # Send UDP request asynchronously
             loop = asyncio.get_running_loop()
+            start_time = time.monotonic()
             response = await loop.run_in_executor(None, self._send_udp_request, request)
-
+            latency = time.monotonic() - start_time
+            data["udp_latency"] = round(latency * 1000, 2)
+            
             # Decode and parse the response
             response = response.decode('ascii')
             
@@ -313,6 +317,47 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     for key in ("grid_power", "house_power", "ev_power", "solar_power"):
                         self._update_stale_count(key, None)
                     # Do not re-raise: the primary charger data is still valid
+
+            # Fetch detailed fault status
+            try:
+                request_status = build_message(
+                    CLIENT_MESSAGE.REQUEST_DATA,
+                    {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN), "request_type": get_hex(REQUEST_TYPE.STATUS.value)}
+                ).encode('ascii')
+                response_status_raw = await loop.run_in_executor(None, self._send_udp_request, request_status)
+                data_status = read_message(response_status_raw.decode('ascii'))
+                if data_status:
+                    fault_list = []
+                    fault_mapping = {
+                        "over_voltage": "Over Voltage",
+                        "under_voltage": "Under Voltage",
+                        "overload": "Overload",
+                        "high_temperature": "Over Temperature",
+                        "poor_grounding": "Poor Grounding",
+                        "leakage": "Leakage",
+                        "cp_signal": "CP Signal",
+                        "emergency_stop": "Emergency Stop",
+                        "cc_signal": "CC Signal",
+                        "dlb_wiring": "DLB Wiring",
+                        "dlb_offline": "DLB Offline",
+                        "motor_lock": "Motor Lock",
+                        "sticking": "Contactor Sticking",
+                        "contactor": "Contactor Fault",
+                    }
+                    for fault_key, label in fault_mapping.items():
+                        if data_status.get(fault_key) == 1:
+                            fault_list.append(label)
+                    
+                    # Extract specific diagnostics for easier automation
+                    data["emergency_stop_active"] = data_status.get("emergency_stop") == 1
+                    data["over_temperature_fault"] = data_status.get("high_temperature") == 1
+                    
+                    data["fault_code"] = ", ".join(fault_list) if fault_list else "None"
+                else:
+                    data["fault_code"] = "None"
+            except Exception as status_err:
+                _LOGGER.debug(f"Failed to fetch detailed fault status: {status_err}")
+                data["fault_code"] = "Unknown"
 
 
             # Expose current DLB config state so entities can read it

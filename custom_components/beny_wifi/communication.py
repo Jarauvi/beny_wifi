@@ -150,6 +150,12 @@ def read_message(data, msg_type:str | None = None) -> dict:  # noqa: C901
             elif param == "request_type":
                 msg[param] = REQUEST_TYPE(int(data[pos], 16)).name
 
+    # charger sends detailed fault status
+    if msg_type == SERVER_MESSAGE.SEND_STATUS:
+        for param, pos in msg_type.value["structure"].items():
+            if pos.stop <= len(data):
+                msg[param] = int(data[pos], 16)
+
     # handshake - server sends serial, ip and port
     elif msg_type == SERVER_MESSAGE.HANDSHAKE:
         msg["serial"] = int(data[SERVER_MESSAGE.HANDSHAKE.value["structure"]["serial"]], 16)

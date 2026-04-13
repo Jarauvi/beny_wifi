@@ -14,6 +14,18 @@
           "charging": "charging"
         }
       },
+      "fault_code": {
+        "name": "Fault Status"
+      },
+      "udp_latency": {
+        "name": "Connection Latency"
+      },
+      "emergency_stop_active": {
+        "name": "Emergency Stop"
+      },
+      "over_temperature_fault": {
+        "name": "Over Temperature Warning"
+      },
       "power": {
         "name": "Power"
       },
