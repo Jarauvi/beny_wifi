@@ -58,9 +58,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             BenyWifiTimerSensor(coordinator, "timer_start", icon="mdi:timer-sand-full", device_model=device_model, serial=serial),
             BenyWifiTimerSensor(coordinator, "timer_end", icon="mdi:timer-sand-empty", device_model=device_model, serial=serial),
             BenyWifiSensor(coordinator, "fault_code", icon="mdi:alert-circle-outline", device_model=device_model, serial=serial),
-            BenyWifiLatencySensor(coordinator, "udp_latency", device_model=device_model, serial=serial),
-            BenyWifiSensor(coordinator, "emergency_stop_active", icon="mdi:stop-circle", device_model=device_model, serial=serial),
-            BenyWifiSensor(coordinator, "over_temperature_fault", icon="mdi:thermometer-alert", device_model=device_model, serial=serial)
+            BenyWifiLatencySensor(coordinator, "udp_latency", device_model=device_model, serial=serial)
         ]
 
     # add all three phases if model supports them
@@ -81,9 +79,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             BenyWifiTimerSensor(coordinator, "timer_start", icon="mdi:timer-sand-full", device_model=device_model, serial=serial),
             BenyWifiTimerSensor(coordinator, "timer_end", icon="mdi:timer-sand-empty", device_model=device_model, serial=serial),
             BenyWifiSensor(coordinator, "fault_code", icon="mdi:alert-circle-outline", device_model=device_model, serial=serial),
-            BenyWifiLatencySensor(coordinator, "udp_latency", device_model=device_model, serial=serial),
-            BenyWifiSensor(coordinator, "emergency_stop_active", icon="mdi:stop-circle", device_model=device_model, serial=serial),
-            BenyWifiSensor(coordinator, "over_temperature_fault", icon="mdi:thermometer-alert", device_model=device_model, serial=serial)
+            BenyWifiLatencySensor(coordinator, "udp_latency", device_model=device_model, serial=serial)
         ]
 
     # TODO: DLB

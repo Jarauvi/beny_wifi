@@ -214,25 +214,25 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # Send UDP request asynchronously
             loop = asyncio.get_running_loop()
             start_time = time.monotonic()
-            response = await loop.run_in_executor(None, self._send_udp_request, request)
+            response_raw = await loop.run_in_executor(None, self._send_udp_request, request)
             latency = time.monotonic() - start_time
             
             # Decode and parse the response
-            response = response.decode('ascii')
+            response_str = response_raw.decode('ascii')
             
             # Authentication failed
-            if "55aa100008" in response:
+            if "55aa100008" in response_str:
                 raise Exception("Authentication failed, check PIN")
         
-            data = read_message(response)
+            data = read_message(response_str)
 
             if data is None:
                 raise UpdateFailed("Error fetching data: checksum not valid")
 
+            data["udp_latency"] = round(latency * 1000, 2)
+
             if data['message_type'] == "SERVER_MESSAGE.ACCESS_DENIED":
                 raise UpdateFailed("Device denied request. Please reconfigure integration if your pin has changed")
-
-            data["udp_latency"] = round(latency * 1000, 2)
 
             # Set unset state to both start and end time if timer is not set at all
             if data['timer_state'] == 'UNSET':
@@ -327,35 +327,47 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 ).encode('ascii')
                 response_status_raw = await loop.run_in_executor(None, self._send_udp_request, request_status)
                 data_status = read_message(response_status_raw.decode('ascii'))
+                
+                fault_mapping = {
+                    "over_voltage": "over_voltage",
+                    "under_voltage": "under_voltage",
+                    "overload": "overload",
+                    "high_temperature": "high_temperature",
+                    "poor_grounding": "poor_grounding",
+                    "leakage": "leakage",
+                    "cp_signal": "cp_signal",
+                    "emergency_stop": "emergency_stop",
+                    "cc_signal": "cc_signal",
+                    "dlb_wiring": "dlb_wiring",
+                    "dlb_offline": "dlb_offline",
+                    "motor_lock": "motor_lock",
+                    "sticking": "sticking",
+                    "contactor": "contactor",
+                }
+
+                # Initialize all faults to False
+                for slug in fault_mapping.values():
+                    data[f"{slug}_fault"] = False
+
                 if data_status:
-                    fault_list = []
-                    fault_mapping = {
-                        "over_voltage": "Over Voltage",
-                        "under_voltage": "Under Voltage",
-                        "overload": "Overload",
-                        "high_temperature": "Over Temperature",
-                        "poor_grounding": "Poor Grounding",
-                        "leakage": "Leakage",
-                        "cp_signal": "CP Signal",
-                        "emergency_stop": "Emergency Stop",
-                        "cc_signal": "CC Signal",
-                        "dlb_wiring": "DLB Wiring",
-                        "dlb_offline": "DLB Offline",
-                        "motor_lock": "Motor Lock",
-                        "sticking": "Contactor Sticking",
-                        "contactor": "Contactor Fault",
-                    }
+                    active_faults = []
                     for fault_key, label in fault_mapping.items():
-                        if data_status.get(fault_key) == 1:
-                            fault_list.append(label)
+                        is_active = data_status.get(fault_key) == 1
+                        data[f"{label}_fault"] = is_active
+                        if is_active:
+                            active_faults.append(label)
                     
-                    # Extract specific diagnostics for easier automation
-                    data["emergency_stop_active"] = data_status.get("emergency_stop") == 1
-                    data["over_temperature_fault"] = data_status.get("high_temperature") == 1
-                    
-                    data["fault_code"] = ", ".join(fault_list) if fault_list else "None"
+                    data["fault_code"] = active_faults[0] if active_faults else "none"
                 else:
-                    data["fault_code"] = "None"
+                    # Fallback: use the summary fault code from the main values packet
+                    summary_code = data.get("fault_code_numeric", 0)
+                    labels = list(fault_mapping.keys())
+                    if 0 < summary_code <= len(labels):
+                        slug = labels[summary_code - 1]
+                        data["fault_code"] = slug
+                        data[f"{slug}_fault"] = True
+                    else:
+                        data["fault_code"] = "none"
             except Exception as status_err:
                 _LOGGER.debug(f"Failed to fetch detailed fault status: {status_err}")
                 data["fault_code"] = "Unknown"

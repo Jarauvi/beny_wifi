@@ -150,6 +150,9 @@ def get_message_type(data: str) -> CLIENT_MESSAGE | SERVER_MESSAGE:
         return SERVER_MESSAGE.ACCESS_DENIED
     if msg_int == 30:
         return SERVER_MESSAGE.SEND_VALUES_1P
+    # Status packet (0x6e) has a payload length of 21 bytes (0x15)
+    if msg_int == 21:
+        return SERVER_MESSAGE.SEND_STATUS
     
     # BCP-A2N-L v1.28 firmware changed msg_int to 31, adding support
     if msg_int == 31:

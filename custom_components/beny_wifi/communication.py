@@ -69,6 +69,8 @@ def read_message(data, msg_type:str | None = None) -> dict:  # noqa: C901
                     msg[param] = TIMER_STATE(value).name
                 elif param == "total_kwh":
                     msg[param] = float(value) / 10
+                elif param == "fault_code":
+                    msg["fault_code_numeric"] = value
                 elif param == "request_type":
                     msg[param] = REQUEST_TYPE(value).name
                 else:

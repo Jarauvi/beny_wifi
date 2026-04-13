@@ -15,13 +15,21 @@
         }
       },
       "fault_code": {
-        "name": "Fault Status"
+        "name": "Fault Status",
+        "state": {
+          "none": "Healthy",
+          "over_voltage": "Over Voltage",
+          "under_voltage": "Under Voltage",
+          "overload": "Overload",
+          "high_temperature": "Over Temperature",
+          "poor_grounding": "Poor Grounding",
+          "leakage": "Leakage",
+          "emergency_stop": "Emergency Stop",
+          "contactor": "Contactor Fault"
+        }
       },
       "udp_latency": {
         "name": "Connection Latency"
-      },
-      "emergency_stop_active": {
-        "name": "Emergency Stop"
       },
       "over_temperature_fault": {
         "name": "Over Temperature Warning"
@@ -82,6 +90,20 @@
         "state": {
           "not_set": "Not set"
         }
+      }
+    },
+    "binary_sensor": {
+      "emergency_stop_fault": {
+        "name": "Emergency Stop"
+      },
+      "high_temperature_fault": {
+        "name": "High Temperature"
+      },
+      "leakage_fault": {
+        "name": "Ground Leakage"
+      },
+      "overload_fault": {
+        "name": "Overload"
       }
     },
     "number": {

@@ -6,8 +6,15 @@ from typing import Final
 from homeassistant.helpers import entity_registry as er
 from homeassistant.const import Platform
 
-# Updated to include NUMBER, BUTTON, SELECT and SWITCH platforms
-PLATFORMS: Final = [Platform.SENSOR, Platform.NUMBER, Platform.BUTTON, Platform.SELECT, Platform.SWITCH]
+# Added also binary sensor
+PLATFORMS: Final = [
+    Platform.SENSOR,
+    Platform.BINARY_SENSOR,
+    Platform.NUMBER,
+    Platform.BUTTON,
+    Platform.SELECT,
+    Platform.SWITCH
+]
 
 NAME: Final = "Beny Wifi"
 DOMAIN: Final = "beny_wifi"
@@ -455,6 +462,7 @@ class SERVER_MESSAGE(Enum):
             "temperature": slice(28, 30),
             "state": slice(30, 32),
             "timer_state": slice(32, 34),
+            "fault_code": slice(34, 36),
             "timer_start_h": slice(36, 38),
             "timer_start_min": slice(38, 40),
             "timer_end_h": slice(40, 42),
@@ -478,10 +486,11 @@ class SERVER_MESSAGE(Enum):
             "temperature": slice(38, 40),
             "state": slice(40, 42),
             "timer_state": slice(42, 44),
-            "timer_start_h": slice(44, 46),
-            "timer_start_min": slice(46, 48),
-            "timer_end_h": slice(50, 52),
-            "timer_end_min": slice(52, 54),
+            "fault_code": slice(44, 46),
+            "timer_start_h": slice(46, 48),
+            "timer_start_min": slice(48, 50),
+            "timer_end_h": slice(52, 54),
+            "timer_end_min": slice(54, 56),
             "max_current": slice(56, 58),
             "maximum_session_consumption": slice(58, 60)
         }

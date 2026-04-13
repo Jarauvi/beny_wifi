@@ -15,16 +15,21 @@
         }
       },
       "fault_code": {
-        "name": "Vikakoodi"
+        "name": "Vikakoodi",
+        "state": {
+          "none": "Ei vikaa",
+          "over_voltage": "Ylijännite",
+          "under_voltage": "Alijännite",
+          "overload": "Ylikuormitus",
+          "high_temperature": "Korkea lämpötila",
+          "poor_grounding": "Maadoitusvika",
+          "leakage": "Maavuoto",
+          "emergency_stop": "Hätäseis",
+          "contactor": "Kontaktorivika"
+        }
       },
       "udp_latency": {
         "name": "Yhteyden viive"
-      },
-      "emergency_stop_active": {
-        "name": "Hätäseis"
-      },
-      "over_temperature_fault": {
-        "name": "Ylikuumenemisvaroitus"
       },
       "power": {
         "name": "Teho"
@@ -82,6 +87,20 @@
         "state": {
           "not_set": "ei asetettu"
         }
+      }
+    },
+    "binary_sensor": {
+      "emergency_stop_fault": {
+        "name": "Hätäseis"
+      },
+      "high_temperature_fault": {
+        "name": "Korkea lämpötila"
+      },
+      "leakage_fault": {
+        "name": "Maavuoto"
+      },
+      "overload_fault": {
+        "name": "Ylikuormitus"
       }
     },
     "number": {
