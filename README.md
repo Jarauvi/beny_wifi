@@ -142,11 +142,11 @@ If you encounter persistent issues, please enable debug logging and provide the 
 | **Max Current** | `A` | Current limit currently set on the charger |
 | **Maximum Session Consumption** | `kWh` | Session based maximum consumption limit |
 | **Timer Start / End** | `timestamp` | Currently set charging window (Displays "Not set" if empty) |
-| **Fault Type** | `-` | `-` | Active fault type |
-| **Emergency stop** | `safe/unsafe` | `-` | If emergency stop has been pressed |
-| **Leakage fault** | `safe/unsafe` | `-` | If leakage fault is on |
-| **High temperature warning** | `ok/problem` | `-` | If high temperature warning is on |
-| **Overload warning** | `ok/problem` | `-` | If overload warning is on |
+| **Fault Type** | `-` | Active fault type |
+| **Emergency stop** | `safe/unsafe` | If emergency stop has been pressed |
+| **Leakage fault** | `safe/unsafe` | If leakage fault is on |
+| **High temperature warning** | `ok/problem` | If high temperature warning is on |
+| **Overload warning** | `ok/problem` | If overload warning is on |
 
 ### Controls & Configuration
 | Entity | Type | Description |
