@@ -31,9 +31,6 @@
       "udp_latency": {
         "name": "Connection Latency"
       },
-      "over_temperature_fault": {
-        "name": "Over Temperature Warning"
-      },
       "power": {
         "name": "Power"
       },

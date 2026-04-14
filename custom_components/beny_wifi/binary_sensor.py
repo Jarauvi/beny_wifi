@@ -26,10 +26,10 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     # Define diagnostic binary sensors
     sensors = [
-        BenyWifiBinarySensor(coordinator, "emergency_stop_fault", BinarySensorDeviceClass.SAFETY, serial, device_model),
-        BenyWifiBinarySensor(coordinator, "high_temperature_fault", BinarySensorDeviceClass.PROBLEM, serial, device_model),
-        BenyWifiBinarySensor(coordinator, "leakage_fault", BinarySensorDeviceClass.SAFETY, serial, device_model),
-        BenyWifiBinarySensor(coordinator, "overload_fault", BinarySensorDeviceClass.PROBLEM, serial, device_model),
+        BenyWifiBinarySensor(coordinator, "emergency_stop_fault", BinarySensorDeviceClass.SAFETY, serial, device_model, icon="mdi:alert"),
+        BenyWifiBinarySensor(coordinator, "high_temperature_fault", BinarySensorDeviceClass.PROBLEM, serial, device_model, icon="mdi:fire"),
+        BenyWifiBinarySensor(coordinator, "leakage_fault", BinarySensorDeviceClass.SAFETY, serial, device_model, icon="mdi:lightning-bolt"),
+        BenyWifiBinarySensor(coordinator, "overload_fault", BinarySensorDeviceClass.PROBLEM, serial, device_model, icon="mdi:alert"),
     ]
 
     async_add_entities(sensors)
@@ -37,7 +37,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class BenyWifiBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """Binary sensor representing a specific charger fault or state."""
 
-    def __init__(self, coordinator, key, device_class, serial, device_model):
+    def __init__(self, coordinator, key, device_class, serial, device_model, icon=None):
         """Initialize the binary sensor."""
         super().__init__(coordinator)
         self.coordinator = coordinator
@@ -48,6 +48,7 @@ class BenyWifiBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._serial = serial
         self._device_model = device_model
         self._attr_has_entity_name = True
+        self._icon = icon
 
     @property
     def is_on(self) -> bool:
@@ -66,3 +67,8 @@ class BenyWifiBinarySensor(CoordinatorEntity, BinarySensorEntity):
             model=self._device_model,
             serial_number=self._serial,
         )
+        
+    @property
+    def icon(self):
+        """Return corresponding icon."""
+        return self._icon
