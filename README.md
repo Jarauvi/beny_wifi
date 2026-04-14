@@ -147,6 +147,7 @@ If you encounter persistent issues, please enable debug logging and provide the 
 | **Leakage fault** | `safe/unsafe` | If leakage fault is on |
 | **High temperature warning** | `ok/problem` | If high temperature warning is on |
 | **Overload warning** | `ok/problem` | If overload warning is on |
+| **Connection latency** | 'ms' | Connection latency of last request - answer |
 
 ### Controls & Configuration
 | Entity | Type | Description |
