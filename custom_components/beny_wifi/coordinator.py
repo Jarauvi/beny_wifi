@@ -430,15 +430,21 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         state_sensor_value = get_entity_state_by_key(self.hass, self.config_entry, "charger_state", "sensor")
 
         if state_sensor_value and state_sensor_value.state != CHARGER_STATE.UNPLUGGED.name.lower():
+            model = get_config_parameter(self.config_entry, SECTION_DEVICE, SERIAL)
+            is_ocpp = any(m in str(model) for m in OCPP_CHARGERS)
+            header_prefix = "55aa06" if is_ocpp else None
+
             if command == "start":
                 request = build_message(
                     CLIENT_MESSAGE.SEND_CHARGER_COMMAND,
-                    {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN), "charger_command": get_hex(CHARGER_COMMAND.START.value)}
+                    {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN), "charger_command": get_hex(CHARGER_COMMAND.START.value)},
+                    header_prefix=header_prefix
                 ).encode('ascii')
             elif command == "stop":
                 request = build_message(
                     CLIENT_MESSAGE.SEND_CHARGER_COMMAND,
-                    {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN), "charger_command": get_hex(CHARGER_COMMAND.STOP.value)}
+                    {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN), "charger_command": get_hex(CHARGER_COMMAND.STOP.value)},
+                    header_prefix=header_prefix
                 ).encode('ascii')
             else:
                 _LOGGER.error(f"Unknown command: {command}")
@@ -530,12 +536,17 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if not (6 <= max_current <= 32):
             raise ValueError("Maximum current must be between 6 and 32 amps")
 
+        model = get_config_parameter(self.config_entry, SECTION_DEVICE, SERIAL)
+        is_ocpp = any(m in str(model) for m in OCPP_CHARGERS)
+        header_prefix = "55aa6d" if is_ocpp else None
+
         request = build_message(
             CLIENT_MESSAGE.SET_MAX_CURRENT,
             {
                 "pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN),
                 "max_current": format(max_current, "02x"),
             },
+            header_prefix=header_prefix
         ).encode("ascii")
 
         loop = asyncio.get_running_loop()
@@ -639,6 +650,11 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if isinstance(dlb_mode_byte, DLB_MODE):
             dlb_mode_byte = dlb_mode_byte.value
 
+        model = get_config_parameter(self.config_entry, SECTION_DEVICE, SERIAL)
+        is_ocpp = any(m in str(model) for m in OCPP_CHARGERS)
+        # OCPP models use 6b for DLB config header
+        header_prefix = "55aa6b" if is_ocpp else None
+
         request = build_message(
             CLIENT_MESSAGE.SET_DLB_CONFIG,
             {
@@ -651,6 +667,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "night_end":    format(cfg["night_end"],       "02x"),
                 "anti_overload": format(cfg["anti_overload"],  "02x"),
             },
+            header_prefix=header_prefix
         ).encode("ascii")
 
         loop = asyncio.get_running_loop()
