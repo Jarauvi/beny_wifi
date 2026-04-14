@@ -167,6 +167,22 @@ If you encounter persistent issues, please enable debug logging and provide the 
 *\** dlb equipped charger only*
 ---
 
+## Fault types
+
+Charger informs about these faults
+
+| Fault type |
+| --- |
+| Healthy | Default state. |
+| Over Voltage | 
+| Under Voltage | 
+| Overload | 
+| Over Temperature |
+| Poor Grounding |
+| Leakage |
+| Emergency Stop |
+| Contactor Fault |
+
 ## ⚡ Service Actions
 
 These services can be used in automations, scripts, or the Developer Tools.
