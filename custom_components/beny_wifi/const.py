@@ -226,6 +226,13 @@ DLB_CHARGERS = [
     "BCP-A2-L"
 ]
 
+OCPP_CHARGERS = [
+    "BCP-A2N-P",
+    "BCP-B2N-P",
+    "BCP-AT2N-P",
+    "BCP-BT2N-P"
+]
+
 class CHARGER_STATE(Enum):
     """Charger states."""
 

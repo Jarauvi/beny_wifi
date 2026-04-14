@@ -20,6 +20,8 @@ from .const import (
     CONF_PIN,
     DEFAULT_ANTI_OVERLOAD,
     DEFAULT_ANTI_OVERLOAD_VALUE,
+    SINGLE_PHASE_CHARGERS,
+    OCPP_CHARGERS,
     DLB,
     DLB_MODE,
     DOMAIN,
@@ -205,10 +207,18 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._dlb_config_loaded = await self.async_read_dlb_config()
 
         try:
+            model = get_config_parameter(self.config_entry, SECTION_DEVICE, SERIAL) # Note: Usually 'model' key is used
+            is_ocpp = any(m in str(model) for m in OCPP_CHARGERS)
+            is_3p = model not in SINGLE_PHASE_CHARGERS
+
+            # OCPP models use the request type (70) as the message type (byte 4)
+            val_prefix = "55aa70" if is_ocpp else None
+
             # Build the request message
             request = build_message(
                 CLIENT_MESSAGE.REQUEST_DATA,
-                {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN), "request_type": get_hex(REQUEST_TYPE.VALUES.value)}
+                {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN), "request_type": get_hex(REQUEST_TYPE.VALUES.value)},
+                header_prefix=val_prefix
             ).encode('ascii')
 
             # Send UDP request asynchronously
@@ -224,7 +234,9 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if "55aa100008" in response_str:
                 raise Exception("Authentication failed, check PIN")
         
-            data = read_message(response_str)
+            # Explicitly pass the expected message type to handle the changed header in OCPP models
+            expected_type = SERVER_MESSAGE.SEND_VALUES_3P if is_3p else SERVER_MESSAGE.SEND_VALUES_1P
+            data = read_message(response_str, expected_type)
 
             if data is None:
                 raise UpdateFailed("Error fetching data: checksum not valid")
@@ -286,15 +298,18 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # DLB data fetch — isolated so a DLB failure doesn't discard valid charger data
             if get_config_parameter(self.config_entry, SECTION_DLB, DLB):
                 try:
+                    dlb_prefix = "55aa7b" if is_ocpp else None
                     request = build_message(
                         CLIENT_MESSAGE.REQUEST_DLB,
-                        {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN), "request_type": get_hex(REQUEST_TYPE.DLB.value)}
+                        {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN), "request_type": get_hex(REQUEST_TYPE.DLB.value)},
+                        header_prefix=dlb_prefix
                     ).encode('ascii')
 
                     loop = asyncio.get_running_loop()
                     response_dlb = await loop.run_in_executor(None, self._send_udp_request, request)
                     response_dlb = response_dlb.decode('ascii')
-                    data_dlb = read_message(response_dlb)
+                    expected_dlb_type = SERVER_MESSAGE.SEND_DLB_3P if is_3p else SERVER_MESSAGE.SEND_DLB
+                    data_dlb = read_message(response_dlb, expected_dlb_type)
 
                     if data_dlb is None:
                         _LOGGER.warning("DLB response had invalid checksum — skipping DLB data this cycle")
