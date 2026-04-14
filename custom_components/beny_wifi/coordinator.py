@@ -230,8 +230,8 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # Decode and parse the response
             response_str = response_raw.decode('ascii')
             
-            # Authentication failed
-            if "55aa100008" in response_str:
+            # Authentication failed (Check for standard 10...08 or OCPP 08 error packets)
+            if "0008" in response_str[6:10] or response_str.startswith("55aa08"):
                 raise Exception("Authentication failed, check PIN")
         
             # Explicitly pass the expected message type to handle the changed header in OCPP models
@@ -336,9 +336,11 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             # Fetch detailed fault status
             try:
+                status_prefix = "55aa6e" if is_ocpp else None
                 request_status = build_message(
                     CLIENT_MESSAGE.REQUEST_DATA,
-                    {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN), "request_type": get_hex(REQUEST_TYPE.STATUS.value)}
+                    {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN), "request_type": get_hex(REQUEST_TYPE.STATUS.value)},
+                    header_prefix=status_prefix
                 ).encode('ascii')
                 response_status_raw = await loop.run_in_executor(None, self._send_udp_request, request_status)
                 data_status = read_message(response_status_raw.decode('ascii'))

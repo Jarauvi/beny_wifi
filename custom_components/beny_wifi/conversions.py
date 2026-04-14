@@ -139,6 +139,21 @@ def get_message_type(data: str) -> CLIENT_MESSAGE | SERVER_MESSAGE:
     message_type = data[COMMON.FIXED_PART.value["structure"]["message_type"]]
     msg_int = int(data[COMMON.FIXED_PART.value["structure"]["message_id"]], 16)
 
+    # OCPP chargers (and newer firmware) use the message type byte as the primary indicator.
+    # Type 04 is always a Model response, Type 03 is a Handshake.
+    if message_type == "04":
+        return SERVER_MESSAGE.SEND_MODEL
+    if message_type == "03":
+        return SERVER_MESSAGE.HANDSHAKE
+    if message_type.upper() == "6E":
+        return SERVER_MESSAGE.SEND_STATUS
+    if message_type.upper() == "70":
+        return SERVER_MESSAGE.SEND_VALUES_3P if msg_int >= 35 else SERVER_MESSAGE.SEND_VALUES_1P
+    if message_type.upper() == "7B":
+        return SERVER_MESSAGE.SEND_DLB_3P if msg_int == 33 else SERVER_MESSAGE.SEND_DLB
+    if message_type.upper() == "6B":
+        return SERVER_MESSAGE.SEND_DLB_CONFIG
+
     if msg_int == 11:
         return CLIENT_MESSAGE.REQUEST_DATA
     if msg_int == 28:

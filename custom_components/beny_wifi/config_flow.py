@@ -330,8 +330,13 @@ class BenyWifiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             time.sleep(0.5)
 
             data = self._send_model_request(dev_data['ip_address'], dev_data['port'], dev_data['pin'], "55aa10")
+            
             if not data:
                 data = self._send_model_request(dev_data['ip_address'], dev_data['port'], dev_data['pin'], "55aa04")
+                
+                if not data:
+                    data = self._send_model_request(dev_data['ip_address'], dev_data['port'], dev_data['pin'], "55aa70")
+
 
             if not data:
                 self._errors["base"] = "cannot_communicate"
