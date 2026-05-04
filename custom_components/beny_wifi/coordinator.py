@@ -43,6 +43,14 @@ DEFAULT_NIGHT_END = 6     # 6am
 # scan interval so behaviour is consistent regardless of polling rate.
 _STALE_WINDOW_SECONDS = 180  # ~3 minutes
 
+# Fast-poll interval for live data (power, current, DLB power)
+LIVE_POLL_INTERVAL = 5  # seconds
+
+# Number of consecutive failed live polls before a field's cached value is
+# evicted and the sensor falls back to unavailable.
+# 3 polls = 15 seconds of tolerance for transient UDP failures.
+_LIVE_CACHE_MISS_THRESHOLD = 3
+
 # Valid hybrid current range.
 # Byte12 of SET_DLB_CONFIG encodes the hybrid current directly.
 # Values 0x00 (PURE_PV), 0x63/99 (FULL_SPEED), and 0xFF (DLB_BOX) are
@@ -55,7 +63,19 @@ HYBRID_CURRENT_MAX = 98
 
 
 class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
-    """Beny Wifi update coordinator."""
+    """Beny Wifi update coordinator.
+
+    Handles slow-changing data: charger state, energy totals, temperature,
+    timer/schedule settings, fault status, and DLB config.
+    Fast-changing live data (power, current, DLB power) is handled by
+    BenyWifiLiveCoordinator which polls at LIVE_POLL_INTERVAL seconds.
+
+    Owns a shared asyncio.Lock (_udp_lock) that both this coordinator and
+    BenyWifiLiveCoordinator must hold before sending any UDP request.  This
+    ensures the two coordinators never talk to the charger simultaneously,
+    which previously caused one request to receive the other's response
+    (wrong checksum → UpdateFailed → brief "unavailable" state).
+    """
 
     def __init__(
         self,
@@ -79,14 +99,17 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.hass = hass
         self._dlb_config_loaded = False  # set True after first successful read from charger
 
-        # Derive the stale threshold from the configured scan interval so that
-        # DLB fields always go unavailable after ~3 minutes of missing data,
-        # regardless of how fast or slow polling is set.
+        # Shared mutex: only one UDP conversation may be in flight at a time.
+        # BenyWifiLiveCoordinator receives a reference to this lock in __init__.
+        self._udp_lock: asyncio.Lock = asyncio.Lock()
+
+        # Derive the stale threshold from the live poll interval so that
+        # DLB fields always go unavailable after ~3 minutes of missing data.
         # Minimum of 3 polls is kept so a single transient failure never triggers it.
-        self.STALE_THRESHOLD = max(3, round(_STALE_WINDOW_SECONDS / scan_interval))
+        self.STALE_THRESHOLD = max(3, round(_STALE_WINDOW_SECONDS / LIVE_POLL_INTERVAL))
         _LOGGER.debug(
             f"STALE_THRESHOLD set to {self.STALE_THRESHOLD} polls "  # noqa: G004
-            f"({scan_interval}s interval → ~{self.STALE_THRESHOLD * scan_interval}s stale window)"
+            f"({LIVE_POLL_INTERVAL}s live interval → ~{self.STALE_THRESHOLD * LIVE_POLL_INTERVAL}s stale window)"
         )
 
         # Resolve Anti Overload initial values from config entry data.
@@ -120,7 +143,8 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if persisted:
             _LOGGER.debug(f"DLB config restored from config_entry.options: {self._dlb_config}")  # noqa: G004
 
-        # Tracks consecutive polls where a field returned None (sentinel/missing).
+        # Tracks consecutive polls where a DLB field returned None (sentinel/missing).
+        # Incremented by BenyWifiLiveCoordinator; read by BenyWifiPowerSensor.available.
         # Once a field hits STALE_THRESHOLD, is_field_stale() returns True so
         # sensors can mark themselves unavailable instead of showing stale data.
         self._stale_counts: dict[str, int] = {}
@@ -144,19 +168,11 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._stale_counts[field] = 0
 
     async def _async_update_data(self) -> dict[str, Any]:
-        """Fetch data asynchronously.
-
-        If the entire fetch fails (device unreachable, UDP timeout, etc.) we still
-        increment stale counts for all DLB fields so they tip to unavailable after
-        STALE_THRESHOLD missed polls, just as they would for per-field sentinel failures.
-        """
-        try:
+        """Fetch data asynchronously."""
+        # Acquire the shared lock so that live coordinator polls are held off
+        # while the (slower) main poll occupies the UDP socket.
+        async with self._udp_lock:
             return await self._fetch_data()
-        except UpdateFailed:
-            if get_config_parameter(self.config_entry, SECTION_DLB, DLB, False):
-                for key in ("grid_power", "house_power", "ev_power", "solar_power"):
-                    self._update_stale_count(key, None)
-            raise
 
     async def async_read_dlb_config(self) -> bool:
         """Attempt to read current DLB config from charger to populate _dlb_config cache.
@@ -197,7 +213,14 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         _LOGGER.debug(f"DLB config persisted to config_entry.options: {self._dlb_config}")  # noqa: G004
 
     async def _fetch_data(self):
-        """Send UDP request and fetch data asynchronously."""
+        """Send UDP request and fetch data asynchronously.
+
+        Fetches: charger state, energy, temperature, timer, faults, DLB config.
+        Does NOT fetch power, current, or DLB power — those are handled by
+        BenyWifiLiveCoordinator at LIVE_POLL_INTERVAL seconds.
+
+        Caller is expected to hold _udp_lock before calling this method.
+        """
 
         # On the first successful fetch, attempt to read DLB config directly from
         # the charger so entities reflect actual state rather than defaults/persisted cache.
@@ -216,14 +239,14 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             start_time = time.monotonic()
             response_raw = await loop.run_in_executor(None, self._send_udp_request, request)
             latency = time.monotonic() - start_time
-            
+
             # Decode and parse the response
             response_str = response_raw.decode('ascii')
-            
+
             # Authentication failed
             if "55aa100008" in response_str:
                 raise Exception("Authentication failed, check PIN")
-        
+
             data = read_message(response_str)
 
             if data is None:
@@ -279,45 +302,11 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             data['charger_state'] = data['state'].lower()
 
-            data['power'] = float(data['power']) / 10
             data['total_kwh'] = float(data['total_kwh'])
             data['temperature'] = int(data['temperature'] - 100)
 
-            # DLB data fetch — isolated so a DLB failure doesn't discard valid charger data
-            if get_config_parameter(self.config_entry, SECTION_DLB, DLB):
-                try:
-                    request = build_message(
-                        CLIENT_MESSAGE.REQUEST_DLB,
-                        {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN), "request_type": get_hex(REQUEST_TYPE.DLB.value)}
-                    ).encode('ascii')
-
-                    loop = asyncio.get_running_loop()
-                    response_dlb = await loop.run_in_executor(None, self._send_udp_request, request)
-                    response_dlb = response_dlb.decode('ascii')
-                    data_dlb = read_message(response_dlb)
-
-                    if data_dlb is None:
-                        _LOGGER.warning("DLB response had invalid checksum — skipping DLB data this cycle")
-                        for key in ("grid_power", "house_power", "ev_power", "solar_power"):
-                            self._update_stale_count(key, None)
-                    else:
-                        # Track staleness per field. None means the charger sent a sentinel
-                        # (0xFF00+) indicating DLB data is temporarily unavailable.
-                        # Only assign valid values so sensors can retain last known state
-                        # until is_field_stale() tips them to unavailable after STALE_THRESHOLD.
-                        for key in ("grid_power", "house_power", "ev_power", "solar_power"):
-                            val = data_dlb.get(key)
-                            self._update_stale_count(key, val)
-                            if val is not None:
-                                data[key] = val
-
-                except Exception as dlb_err:
-                    _LOGGER.warning(
-                        f"DLB fetch failed (non-fatal): {dlb_err} — DLB sensors will retain last valid value"
-                    )
-                    for key in ("grid_power", "house_power", "ev_power", "solar_power"):
-                        self._update_stale_count(key, None)
-                    # Do not re-raise: the primary charger data is still valid
+            # NOTE: power and current values are intentionally NOT processed here.
+            # They are fetched at LIVE_POLL_INTERVAL by BenyWifiLiveCoordinator.
 
             # Fetch detailed fault status
             try:
@@ -327,7 +316,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 ).encode('ascii')
                 response_status_raw = await loop.run_in_executor(None, self._send_udp_request, request_status)
                 data_status = read_message(response_status_raw.decode('ascii'))
-                
+
                 fault_mapping = {
                     "over_voltage": "over_voltage",
                     "under_voltage": "under_voltage",
@@ -356,7 +345,7 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         data[f"{label}_fault"] = is_active
                         if is_active:
                             active_faults.append(label)
-                    
+
                     data["fault_code"] = active_faults[0] if active_faults else "none"
                 else:
                     # Fallback: use the summary fault code from the main values packet
@@ -371,7 +360,6 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             except Exception as status_err:
                 _LOGGER.debug(f"Failed to fetch detailed fault status: {status_err}")
                 data["fault_code"] = "Unknown"
-
 
             # Expose current DLB config state so entities can read it
             data['dlb_config'] = dict(self._dlb_config)
@@ -430,7 +418,8 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 return
 
             loop = asyncio.get_running_loop()
-            await loop.run_in_executor(None, self._send_udp_request, request)
+            async with self._udp_lock:
+                await loop.run_in_executor(None, self._send_udp_request, request)
             _LOGGER.info(f"{device_name}: {command} charging command sent")
 
     async def async_set_max_monthly_consumption(self, device_name: str, maximum_consumption: int):
@@ -438,7 +427,8 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         request = build_message(CLIENT_MESSAGE.SET_MAX_MONTHLY_CONSUMPTION, {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN), "maximum_consumption": get_hex(maximum_consumption, 4)}).encode('ascii')
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self._send_udp_request, request)
+        async with self._udp_lock:
+            await loop.run_in_executor(None, self._send_udp_request, request)
 
         _LOGGER.info(f"{device_name}: maximum consumption set")
 
@@ -447,7 +437,8 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         request = build_message(CLIENT_MESSAGE.SET_MAX_SESSION_CONSUMPTION, {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN), "maximum_consumption": get_hex(maximum_consumption)}).encode('ascii')
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self._send_udp_request, request)
+        async with self._udp_lock:
+            await loop.run_in_executor(None, self._send_udp_request, request)
 
         _LOGGER.info(f"{device_name}: maximum consumption set")
 
@@ -462,7 +453,8 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             timer_data['pin'] = get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN)
             request = build_message(CLIENT_MESSAGE.SET_TIMER, timer_data).encode('ascii')
             loop = asyncio.get_running_loop()
-            await loop.run_in_executor(None, self._send_udp_request, request)
+            async with self._udp_lock:
+                await loop.run_in_executor(None, self._send_udp_request, request)
 
             _LOGGER.info(f"{device_name}: charging timer set")
 
@@ -472,7 +464,8 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         schedule_data['pin'] = get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN)
         request = build_message(CLIENT_MESSAGE.SET_SCHEDULE, schedule_data).encode('ascii')
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self._send_udp_request, request)
+        async with self._udp_lock:
+            await loop.run_in_executor(None, self._send_udp_request, request)
 
         _LOGGER.info(f"{device_name}: charging schedule set")
 
@@ -485,7 +478,8 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if state_sensor_value and state_sensor_value.state != CHARGER_STATE.UNPLUGGED.name.lower():
             request = build_message(CLIENT_MESSAGE.RESET_TIMER, {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN)}).encode('ascii')
             loop = asyncio.get_running_loop()
-            await loop.run_in_executor(None, self._send_udp_request, request)
+            async with self._udp_lock:
+                await loop.run_in_executor(None, self._send_udp_request, request)
 
             _LOGGER.info(f"{device_name}: charging timer reset")
 
@@ -494,7 +488,9 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         request = build_message(CLIENT_MESSAGE.REQUEST_SETTINGS, {"pin": get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN)}).encode('ascii')
         loop = asyncio.get_running_loop()
-        response = await loop.run_in_executor(None, self._send_udp_request, request)
+        async with self._udp_lock:
+            response = await loop.run_in_executor(None, self._send_udp_request, request)
+
         # Decode and parse the response
         response = response.decode('ascii')
         data = read_message(response, SERVER_MESSAGE.SEND_SETTINGS)
@@ -524,7 +520,8 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         ).encode("ascii")
 
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self._send_udp_request, request)
+        async with self._udp_lock:
+            await loop.run_in_executor(None, self._send_udp_request, request)
 
         _LOGGER.info(f"{device_name}: max current set to {max_current}A")
 
@@ -639,7 +636,8 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         ).encode("ascii")
 
         loop = asyncio.get_running_loop()
-        response = await loop.run_in_executor(None, self._send_udp_request, request)
+        async with self._udp_lock:
+            response = await loop.run_in_executor(None, self._send_udp_request, request)
 
         # Parse the ACK — the charger echoes back the full config it applied.
         # This confirms what was stored and keeps _dlb_config in sync,
@@ -667,3 +665,216 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             f"night={cfg['night']:#04x} "
             f"night_start={cfg['night_start']} night_end={cfg['night_end']}"
         )
+
+
+class BenyWifiLiveCoordinator(DataUpdateCoordinator[dict[str, Any]]):
+    """Fast-polling coordinator for live sensor data.
+
+    Polls at LIVE_POLL_INTERVAL (5 seconds) and fetches:
+      - Power and current readings (1P: power, current1, voltage1; 3P: all phases)
+      - DLB power readings (grid, solar, EV, house) when DLB is enabled
+
+    Shares the main coordinator's stale-count tracking for DLB fields so that
+    BenyWifiPowerSensor.available works correctly regardless of which coordinator
+    owns the DLB sensors.
+
+    Uses a short UDP timeout (3s, no retries) to ensure each poll finishes well
+    within the 5-second interval.  Failures are handled by value caching: the last
+    known valid value for each field is retained for up to _LIVE_CACHE_MISS_THRESHOLD
+    consecutive failed polls before being evicted.  This prevents brief UDP hiccups
+    from causing "unavailable" flashes in the UI.
+
+    Collision avoidance: acquires the main coordinator's _udp_lock before sending
+    any UDP request.  If the main coordinator is mid-poll the live poll simply waits
+    rather than sending a concurrent request that would confuse the charger.
+    """
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config_entry,
+        ip_address: str,
+        port: int,
+        main_coordinator: BenyWifiUpdateCoordinator,
+    ) -> None:
+        """Initialize the live coordinator."""
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=f"{DOMAIN}_live",
+            update_interval=timedelta(seconds=LIVE_POLL_INTERVAL),
+        )
+        self.config_entry = config_entry
+        self.ip_address = ip_address
+        self.port = port
+        # Reference to the main coordinator — used to share stale-count state,
+        # _dlb_config, and the UDP lock.
+        self._main = main_coordinator
+
+        # Per-field value cache: stores the last successfully received value.
+        # Returned on failed polls so sensors stay populated instead of going unavailable.
+        self._cached_data: dict[str, Any] = {}
+
+        # Per-field miss counter: tracks consecutive polls where a field was absent
+        # or None in the device response.  Once this hits _LIVE_CACHE_MISS_THRESHOLD
+        # the cached value is evicted so the sensor can honestly go unavailable.
+        self._miss_counts: dict[str, int] = {}
+
+    def is_field_stale(self, field: str) -> bool:
+        """Delegate stale check to main coordinator."""
+        return self._main.is_field_stale(field)
+
+    # ------------------------------------------------------------------
+    # Internal cache helpers
+    # ------------------------------------------------------------------
+
+    def _record_hit(self, field: str, value: Any) -> None:
+        """Store a freshly received value and reset its miss counter."""
+        self._cached_data[field] = value
+        self._miss_counts[field] = 0
+
+    def _record_miss(self, field: str) -> None:
+        """Increment miss counter; evict cache entry once threshold is reached."""
+        count = self._miss_counts.get(field, 0) + 1
+        self._miss_counts[field] = count
+        if count >= _LIVE_CACHE_MISS_THRESHOLD:
+            if field in self._cached_data:
+                _LOGGER.debug(
+                    f"Live cache: evicting '{field}' after {count} consecutive misses"  # noqa: G004
+                )
+                del self._cached_data[field]
+        else:
+            _LOGGER.debug(
+                f"Live cache: '{field}' miss {count}/{_LIVE_CACHE_MISS_THRESHOLD} — "  # noqa: G004
+                f"serving cached value"
+            )
+
+    async def _async_update_data(self) -> dict[str, Any]:
+        """Fetch live power, current, and DLB data.
+
+        Always returns a data dict (never raises UpdateFailed directly) so that
+        CoordinatorEntity.available stays True as long as cached values exist.
+        The live coordinator's last_update_success is set to True whenever we
+        have something meaningful to return, even if it came from the cache.
+        """
+        # Start with an empty result; we'll populate from fresh data + cache below.
+        fresh: dict[str, Any] = {}
+
+        pin = get_config_parameter(self.config_entry, SECTION_DEVICE, CONF_PIN)
+        loop = asyncio.get_running_loop()
+
+        # Acquire the shared UDP lock.  If the main coordinator is currently mid-poll
+        # this will block here (typically < 500 ms) until it finishes — preventing
+        # simultaneous UDP traffic that previously triggered "unavailable" flashes.
+        async with self._main._udp_lock:
+
+            # --- Main values packet (power + current + voltage) ---
+            try:
+                request = build_message(
+                    CLIENT_MESSAGE.REQUEST_DATA,
+                    {"pin": pin, "request_type": get_hex(REQUEST_TYPE.VALUES.value)}
+                ).encode('ascii')
+
+                response_raw = await loop.run_in_executor(None, self._send_live_udp, request)
+                response_str = response_raw.decode('ascii')
+                parsed = read_message(response_str)
+
+                if parsed is not None:
+                    # Power (stored in 100W units in the packet → divide by 10 for kW)
+                    if "power" in parsed:
+                        fresh["power"] = float(parsed["power"]) / 10
+
+                    # Currents — include all phase keys present in the packet
+                    for key in ("current1", "current2", "current3", "max_current"):
+                        if key in parsed:
+                            fresh[key] = parsed[key]
+
+                    # Voltages — also fast-changing on 3P units
+                    for key in ("voltage1", "voltage2", "voltage3"):
+                        if key in parsed:
+                            fresh[key] = parsed[key]
+                else:
+                    _LOGGER.debug("Live values packet had invalid checksum — skipping this cycle")
+
+            except Exception as err:
+                _LOGGER.debug(f"Live values fetch failed (non-fatal): {err}")
+
+            # --- DLB power packet ---
+            if get_config_parameter(self.config_entry, SECTION_DLB, DLB, False):
+                try:
+                    request_dlb = build_message(
+                        CLIENT_MESSAGE.REQUEST_DLB,
+                        {"pin": pin, "request_type": get_hex(REQUEST_TYPE.DLB.value)}
+                    ).encode('ascii')
+
+                    response_dlb = await loop.run_in_executor(None, self._send_live_udp, request_dlb)
+                    data_dlb = read_message(response_dlb.decode('ascii'))
+
+                    if data_dlb is None:
+                        _LOGGER.debug("Live DLB packet had invalid checksum — skipping DLB data this cycle")
+                        for key in ("grid_power", "house_power", "ev_power", "solar_power"):
+                            self._main._update_stale_count(key, None)
+                    else:
+                        for key in ("grid_power", "house_power", "ev_power", "solar_power"):
+                            val = data_dlb.get(key)
+                            self._main._update_stale_count(key, val)
+                            if val is not None:
+                                fresh[key] = val
+
+                except Exception as dlb_err:
+                    _LOGGER.debug(
+                        f"Live DLB fetch failed (non-fatal): {dlb_err} — DLB sensors will retain cached value"
+                    )
+                    for key in ("grid_power", "house_power", "ev_power", "solar_power"):
+                        self._main._update_stale_count(key, None)
+
+        # ------------------------------------------------------------------
+        # Merge fresh data into the per-field cache and build the return dict.
+        #
+        # All fields tracked by the live coordinator (both values and DLB) go
+        # through the same hit/miss accounting so the logic is uniform.
+        # ------------------------------------------------------------------
+        _all_live_fields = (
+            "power",
+            "current1", "current2", "current3", "max_current",
+            "voltage1", "voltage2", "voltage3",
+            "grid_power", "solar_power", "ev_power", "house_power",
+        )
+
+        result: dict[str, Any] = {}
+
+        for field in _all_live_fields:
+            if field in fresh:
+                # Fresh value received — update cache and include in result.
+                self._record_hit(field, fresh[field])
+                result[field] = fresh[field]
+            elif field in self._cached_data:
+                # No fresh value this cycle — serve cached value and record miss.
+                self._record_miss(field)
+                # After eviction _cached_data no longer has the field; check again.
+                if field in self._cached_data:
+                    result[field] = self._cached_data[field]
+            # else: field has no fresh value and no cached value — omit from result.
+
+        return result
+
+    def _send_live_udp(self, request: bytes) -> bytes:
+        """Send a UDP request with a tight timeout suited to the 5-second poll cycle.
+
+        No retries — if the charger doesn't respond within 3 seconds the next poll
+        is only 2 seconds away anyway, so retrying would cause polls to stack.
+        """
+        sock = None
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.settimeout(3)
+            sock.sendto(request, (self.ip_address, self.port))
+            response, _ = sock.recvfrom(1024)
+            return response
+        except socket.timeout:
+            raise UpdateFailed("Live UDP request timed out")
+        except Exception as err:
+            raise UpdateFailed(f"Live UDP request failed: {err}")
+        finally:
+            if sock:
+                sock.close()
