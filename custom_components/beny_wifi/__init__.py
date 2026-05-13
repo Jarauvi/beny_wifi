@@ -8,13 +8,13 @@ from .const import (
     CONF_ANTI_OVERLOAD_VALUE,
     DEFAULT_ANTI_OVERLOAD,
     DEFAULT_ANTI_OVERLOAD_VALUE,
+    DLB,
     DOMAIN, 
     IP_ADDRESS, 
     PLATFORMS, 
     PORT, 
     DEFAULT_PORT,
     SCAN_INTERVAL, 
-    DLB, 
     CONF_MAX_CURRENT_MIN, 
     CONF_MAX_CURRENT_MAX, 
     DEFAULT_MAX_CURRENT_MIN, 
@@ -29,7 +29,7 @@ from .const import (
     SECTION_DLB,
     get_config_parameter
 )
-from .coordinator import BenyWifiUpdateCoordinator
+from .coordinator import BenyWifiUpdateCoordinator, BenyWifiLiveCoordinator
 from .services import async_setup_services
 
 _LOGGER = logging.getLogger(__name__)
@@ -46,33 +46,42 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if entry.unique_id != serial_str:
             hass.config_entries.async_update_entry(entry, unique_id=serial_str)
     
-    
     ip_address = get_config_parameter(entry, SECTION_CONNECTION, IP_ADDRESS)
     port = get_config_parameter(entry, SECTION_CONNECTION, PORT)
-    # Use DEFAULT_SCAN_INTERVAL (30 seconds) if not configured
+    # Use DEFAULT_SCAN_INTERVAL if not configured
     scan_interval = get_config_parameter(entry, SECTION_CONNECTION, SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
-    _LOGGER.info(f"Using scan interval: {scan_interval} seconds")
-    
-    # FIXED: Pass entry as the second parameter
+    _LOGGER.info(f"Using scan interval: {scan_interval} seconds for main coordinator")
+
+    # Main coordinator — charger state, energy, faults, timers, DLB config
     coordinator = BenyWifiUpdateCoordinator(hass, entry, ip_address, port, scan_interval)
-    
+
     # Perform the first update to ensure connection works
     try:
         await coordinator.async_config_entry_first_refresh()
     except Exception as ex:
         _LOGGER.error(f"Error setting up coordinator: {ex}")
         raise ConfigEntryNotReady from ex
-    
-    # Store the coordinator for use by platforms
+
+    # Live coordinator — power, current, and DLB power at 5-second intervals
+    live_coordinator = BenyWifiLiveCoordinator(hass, entry, ip_address, port, coordinator)
+    try:
+        await live_coordinator.async_config_entry_first_refresh()
+    except Exception as ex:
+        # Non-fatal: live data will catch up on the next poll cycle.
+        # The integration can still function with slower data from the main coordinator.
+        _LOGGER.warning(f"Live coordinator first refresh failed (non-fatal): {ex}")
+
+    # Store both coordinators for use by platforms
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
         "coordinator": coordinator,
+        "live_coordinator": live_coordinator,
     }
     
     # Forward entry setup to supported platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     
-    # setup services
+    # Setup services
     await async_setup_services(hass)
     
     return True

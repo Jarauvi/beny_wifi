@@ -37,6 +37,7 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up sensor platform."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
+    live_coordinator = hass.data[DOMAIN][config_entry.entry_id]["live_coordinator"]
     serial = get_config_parameter(config_entry, SECTION_DEVICE, SERIAL)
     device_model = get_config_parameter(config_entry, SECTION_DEVICE, MODEL)
     device_type = get_config_parameter(config_entry, SECTION_DEVICE, CHARGER_TYPE)
@@ -44,51 +45,60 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     sensors = []
 
-    # by default only all 1-phase sensors are included
+    # Sensors are split between two coordinators:
+    #   live_coordinator (5s):  power, current, voltage
+    #   coordinator (main interval): everything else
+    #
+    # Both coordinators produce data dicts; CoordinatorEntity handles
+    # update subscription automatically based on which coordinator is passed.
+
     if device_type == '1P':
         sensors = [
+            # --- Main coordinator sensors (slow-changing) ---
             BenyWifiChargerStateSensor(coordinator, "charger_state", device_model=device_model, serial=serial),
-            BenyWifiPowerSensor(coordinator, "power", device_model=device_model, serial=serial),
-            BenyWifiVoltageSensor(coordinator, "voltage1", device_model=device_model, serial=serial),
-            BenyWifiCurrentSensor(coordinator, "current1", device_model=device_model, serial=serial),
-            BenyWifiCurrentSensor(coordinator, "max_current", device_model=device_model, serial=serial),
             BenyWifiEnergySensor(coordinator, "total_kwh", device_model=device_model, serial=serial),
             BenyWifiTemperatureSensor(coordinator, "temperature", device_model=device_model, serial=serial),
             BenyWifiEnergySensor(coordinator, "maximum_session_consumption", icon="mdi:meter-electric", device_model=device_model, serial=serial),
             BenyWifiTimerSensor(coordinator, "timer_start", icon="mdi:timer-sand-full", device_model=device_model, serial=serial),
             BenyWifiTimerSensor(coordinator, "timer_end", icon="mdi:timer-sand-empty", device_model=device_model, serial=serial),
             BenyWifiSensor(coordinator, "fault_code", icon="mdi:alert-circle-outline", device_model=device_model, serial=serial),
-            BenyWifiLatencySensor(coordinator, "udp_latency", device_model=device_model, serial=serial)
+            BenyWifiLatencySensor(coordinator, "udp_latency", device_model=device_model, serial=serial),
+            # --- Live coordinator sensors (5s) ---
+            BenyWifiPowerSensor(live_coordinator, "power", device_model=device_model, serial=serial),
+            BenyWifiVoltageSensor(live_coordinator, "voltage1", device_model=device_model, serial=serial),
+            BenyWifiCurrentSensor(live_coordinator, "current1", device_model=device_model, serial=serial),
+            BenyWifiCurrentSensor(live_coordinator, "max_current", device_model=device_model, serial=serial),
         ]
 
-    # add all three phases if model supports them
     elif device_type == '3P':
         sensors = [
+            # --- Main coordinator sensors (slow-changing) ---
             BenyWifiChargerStateSensor(coordinator, "charger_state", device_model=device_model, serial=serial),
-            BenyWifiPowerSensor(coordinator, "power", device_model=device_model, serial=serial),
-            BenyWifiVoltageSensor(coordinator, "voltage1", device_model=device_model, serial=serial),
-            BenyWifiVoltageSensor(coordinator, "voltage2", device_model=device_model, serial=serial),
-            BenyWifiVoltageSensor(coordinator, "voltage3", device_model=device_model, serial=serial),
-            BenyWifiCurrentSensor(coordinator, "current1", device_model=device_model, serial=serial),
-            BenyWifiCurrentSensor(coordinator, "current2", device_model=device_model, serial=serial),
-            BenyWifiCurrentSensor(coordinator, "current3", device_model=device_model, serial=serial),
-            BenyWifiCurrentSensor(coordinator, "max_current", device_model=device_model, serial=serial),
             BenyWifiEnergySensor(coordinator, "total_kwh", device_model=device_model, serial=serial),
             BenyWifiTemperatureSensor(coordinator, "temperature", device_model=device_model, serial=serial),
             BenyWifiEnergySensor(coordinator, "maximum_session_consumption", icon="mdi:meter-electric", device_model=device_model, serial=serial),
             BenyWifiTimerSensor(coordinator, "timer_start", icon="mdi:timer-sand-full", device_model=device_model, serial=serial),
             BenyWifiTimerSensor(coordinator, "timer_end", icon="mdi:timer-sand-empty", device_model=device_model, serial=serial),
             BenyWifiSensor(coordinator, "fault_code", icon="mdi:alert-circle-outline", device_model=device_model, serial=serial),
-            BenyWifiLatencySensor(coordinator, "udp_latency", device_model=device_model, serial=serial)
+            BenyWifiLatencySensor(coordinator, "udp_latency", device_model=device_model, serial=serial),
+            # --- Live coordinator sensors (5s) ---
+            BenyWifiPowerSensor(live_coordinator, "power", device_model=device_model, serial=serial),
+            BenyWifiVoltageSensor(live_coordinator, "voltage1", device_model=device_model, serial=serial),
+            BenyWifiVoltageSensor(live_coordinator, "voltage2", device_model=device_model, serial=serial),
+            BenyWifiVoltageSensor(live_coordinator, "voltage3", device_model=device_model, serial=serial),
+            BenyWifiCurrentSensor(live_coordinator, "current1", device_model=device_model, serial=serial),
+            BenyWifiCurrentSensor(live_coordinator, "current2", device_model=device_model, serial=serial),
+            BenyWifiCurrentSensor(live_coordinator, "current3", device_model=device_model, serial=serial),
+            BenyWifiCurrentSensor(live_coordinator, "max_current", device_model=device_model, serial=serial),
         ]
 
-    # TODO: DLB
+    # DLB power sensors always go on the live coordinator
     if dlb:
         sensors.extend([
-            BenyWifiPowerSensor(coordinator, "grid_power", icon="mdi:transmission-tower", device_model=device_model, serial=serial),
-            BenyWifiPowerSensor(coordinator, "solar_power", icon="mdi:solar-power-variant", device_model=device_model, serial=serial),
-            BenyWifiPowerSensor(coordinator, "ev_power", icon="mdi:car-electric", device_model=device_model, serial=serial),
-            BenyWifiPowerSensor(coordinator, "house_power", icon="mdi:home-lightning-bolt", device_model=device_model, serial=serial),
+            BenyWifiPowerSensor(live_coordinator, "grid_power", icon="mdi:transmission-tower", device_model=device_model, serial=serial),
+            BenyWifiPowerSensor(live_coordinator, "solar_power", icon="mdi:solar-power-variant", device_model=device_model, serial=serial),
+            BenyWifiPowerSensor(live_coordinator, "ev_power", icon="mdi:car-electric", device_model=device_model, serial=serial),
+            BenyWifiPowerSensor(live_coordinator, "house_power", icon="mdi:home-lightning-bolt", device_model=device_model, serial=serial),
         ])
 
     async_add_entities(sensors)
@@ -170,7 +180,7 @@ class BenyWifiPowerSensor(BenyWifiSensor):
     def __init__(self, coordinator, key, device_model=None, serial=None, icon="mdi:ev-plug-type2"):
         """Initialize sensor."""
         super().__init__(coordinator, key, serial=serial, device_model=device_model, icon=icon)
-            
+
     @property
     def available(self) -> bool:
         """Return False once a DLB field has been None for STALE_THRESHOLD consecutive polls.
@@ -179,6 +189,10 @@ class BenyWifiPowerSensor(BenyWifiSensor):
         which already handles device-unreachable via last_update_success.
         For DLB fields, also checks the per-field stale counter so each can go
         unavailable independently of the overall coordinator state.
+
+        BenyWifiLiveCoordinator exposes is_field_stale() by delegating to the main
+        coordinator's stale-count dict, so this check works for sensors on either
+        coordinator.
         """
         if self.key in ("grid_power", "solar_power", "ev_power", "house_power"):
             return super().available and not self.coordinator.is_field_stale(self.key)
