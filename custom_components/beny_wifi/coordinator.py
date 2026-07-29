@@ -149,6 +149,16 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # sensors can mark themselves unavailable instead of showing stale data.
         self._stale_counts: dict[str, int] = {}
 
+    @staticmethod
+    def _is_valid_hour(value: int) -> bool:
+        """Return True if value is a valid hour (0-23)."""
+        return isinstance(value, int) and 0 <= value <= 23
+
+    @staticmethod
+    def _is_valid_minute(value: int) -> bool:
+        """Return True if value is a valid minute (0-59)."""
+        return isinstance(value, int) and 0 <= value <= 59
+
     def is_field_stale(self, field: str) -> bool:
         """Return True if the field has been missing for STALE_THRESHOLD consecutive polls."""
         return self._stale_counts.get(field, 0) >= self.STALE_THRESHOLD
@@ -256,6 +266,29 @@ class BenyWifiUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             if data['message_type'] == "SERVER_MESSAGE.ACCESS_DENIED":
                 raise UpdateFailed("Device denied request. Please reconfigure integration if your pin has changed")
+
+            # Validate timer values to prevent ValueError from firmware quirks
+            # (e.g. Z-Box app setting unusual byte values on certain firmware versions)
+            if not self._is_valid_hour(data.get('timer_start_h', 0)):
+                _LOGGER.warning(
+                    f"Invalid timer_start_h value: {data.get('timer_start_h')} — treating as 0"
+                )
+                data['timer_start_h'] = 0
+            if not self._is_valid_minute(data.get('timer_start_min', 0)):
+                _LOGGER.warning(
+                    f"Invalid timer_start_min value: {data.get('timer_start_min')} — treating as 0"
+                )
+                data['timer_start_min'] = 0
+            if not self._is_valid_hour(data.get('timer_end_h', 0)):
+                _LOGGER.warning(
+                    f"Invalid timer_end_h value: {data.get('timer_end_h')} — treating as 0"
+                )
+                data['timer_end_h'] = 0
+            if not self._is_valid_minute(data.get('timer_end_min', 0)):
+                _LOGGER.warning(
+                    f"Invalid timer_end_min value: {data.get('timer_end_min')} — treating as 0"
+                )
+                data['timer_end_min'] = 0
 
             # Set unset state to both start and end time if timer is not set at all
             if data['timer_state'] == 'UNSET':
